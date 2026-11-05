@@ -29,7 +29,8 @@ export default function PostFX({ rig, quality = "high" }) {
   }, [motionBlur, lens]);
 
   useFrame(() => {
-    dof.current?.target?.copy(rig.aim);
+    // focus where the torch points — or on the page being read
+    dof.current?.target?.lerpVectors(rig.aim, rig.readPoint, rig.readT);
     const k = reduceMotion.current ? 0 : 1;
     motionBlur.uniforms.get("velocity").value.set(-rig.blur.x * 0.9 * k, -rig.blur.y * 0.9 * k);
     motionBlur.uniforms.get("zoom").value = rig.zoomBlur * 0.5 * k;
@@ -47,7 +48,7 @@ export default function PostFX({ rig, quality = "high" }) {
       <primitive object={motionBlur} />
       <primitive object={lens} />
       <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.12} />
-      <Vignette offset={0.3} darkness={0.62} />
+      <Vignette offset={0.26} darkness={0.72} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   );

@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { paintItem } from "../painters";
 import { seeded } from "../painters/common";
 import { paperBumpTexture } from "../textures/procedural";
 import { UNIT, itemZ, rectCenter } from "../space";
+import { damp } from "../rig";
 import { Pin, Tape } from "./Fasteners";
+
+const READ_DIST = 1.6; // how far in front of the camera a page is held to read
+const HOVER_OPACITY = 0.13;
 
 /**
  * Paper geometry that isn't perfectly flat: edges lift a little, one corner
@@ -17,7 +22,7 @@ function curledPlane(item) {
   const h = item.h * UNIT;
   const geo = new THREE.PlaneGeometry(w, h, 12, 12);
   const r = seeded(item.id);
-  const flat = item.kind === "label" || item.kind === "blueprint";
+  const flat = item.kind === "label";
   const curlCorner = [r() < 0.5 ? -1 : 1, r() < 0.7 ? -1 : 1]; // mostly a bottom corner
   const curl = flat ? 0 : (0.015 + r() * 0.035) * Math.min(1, Math.max(w, h) / 3);
   const pos = geo.attributes.position;
@@ -34,6 +39,31 @@ function curledPlane(item) {
   return geo;
 }
 
+/** White highlight that follows the paper's own cut-out shape (alpha). */
+function overlayMaterial(map) {
+  return new THREE.ShaderMaterial({
+    uniforms: { map: { value: map }, opacity: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D map;
+      uniform float opacity;
+      varying vec2 vUv;
+      void main() {
+        if (texture2D(map, vUv).a < 0.5 || opacity < 0.001) discard;
+        gl_FragColor = vec4(1.0, 1.0, 1.0, opacity);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+  });
+}
+
 /** Local position on the item for fraction `at` ([fx, fy], top-left origin). */
 const local = (item, [fx, fy]) => [(fx - 0.5) * item.w * UNIT, (0.5 - fy) * item.h * UNIT];
 
@@ -45,14 +75,29 @@ const FASTENERS = {
   ],
 };
 
+const smooth = (t) => t * t * (3 - 2 * t);
+const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
+const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
+
 /**
- * One piece of evidence: painted texture on a slightly curled sheet, with
- * its pins / tape. `occupied` lists pin spots already taken by red strings.
+ * One piece of evidence: painted texture on a slightly curled sheet with
+ * its pins / tape. Hover shows a faint white overlay; when `selected` the
+ * sheet lifts off the board and is held up in front of the camera to read.
+ *
+ * @param {number[][]} occupied   pin spots already used by red strings
+ * @param {{shift:number,height:number,width:number}} readLayout  reading pose,
+ *        as fractions of the visible area (shift: horizontal offset)
  */
-export default function Item({ item, occupied = [] }) {
+export default function Item({ item, occupied = [], rig, selected, onRead, readLayout }) {
   const [painted, setPainted] = useState(null);
   const geometry = useMemo(() => curledPlane(item), [item]);
   const bump = useMemo(() => paperBumpTexture(), []);
+  const overlay = useMemo(() => (painted ? overlayMaterial(painted.texture) : null), [painted]);
+  const group = useRef(null);
+  const fasteners = useRef(null);
+  const material = useRef(null);
+  const state = useRef({ t: 0, hover: 0, hovered: false });
+  const readable = item.readable !== false;
 
   useEffect(() => {
     let alive = true;
@@ -69,22 +114,99 @@ export default function Item({ item, occupied = [] }) {
   }, [item]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => () => overlay?.dispose(), [overlay]);
+
+  // Pose on the board.
+  const board = useMemo(() => {
+    const [cx, cy] = rectCenter(item);
+    return {
+      pos: new THREE.Vector3(cx, cy, itemZ(item)),
+      quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, (-(item.rot || 0) * Math.PI) / 180)),
+    };
+  }, [item]);
+
+  useFrame(({ camera }, rawDt) => {
+    const g = group.current;
+    if (!g) return;
+    const dt = Math.min(rawDt, 0.05);
+    const s = state.current;
+
+    // hover overlay
+    const wantHover = s.hovered && !rig.reading ? HOVER_OPACITY : 0;
+    s.hover += (wantHover - s.hover) * damp(14, dt);
+    if (overlay) overlay.uniforms.opacity.value = s.hover;
+
+    // lift off the board ↔ held up to read
+    const target = selected ? 1 : 0;
+    if (s.t === target && !selected) return;
+    s.t += (target - s.t) * damp(selected ? 4.5 : 6, dt);
+    if (Math.abs(target - s.t) < 0.0005) s.t = target;
+    const e = smooth(s.t);
+
+    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const visH = 2 * READ_DIST * Math.tan(fov / 2);
+    const visW = visH * camera.aspect;
+    const scale = Math.min((readLayout.height * visH) / (item.h * UNIT), (readLayout.width * visW) / (item.w * UNIT));
+    camera.getWorldDirection(tmp.fwd);
+    tmp.right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    tmp.pos
+      .copy(camera.position)
+      .addScaledVector(tmp.fwd, READ_DIST)
+      .addScaledVector(tmp.right, readLayout.shift * visW);
+    tmp.quat.copy(camera.quaternion).multiply(TILT);
+
+    g.position.lerpVectors(board.pos, tmp.pos, e);
+    g.position.z += Math.sin(e * Math.PI) * 0.6; // arc toward the viewer
+    g.quaternion.slerpQuaternions(board.quat, tmp.quat, e);
+    g.scale.setScalar(THREE.MathUtils.lerp(1, scale, e));
+    if (fasteners.current) fasteners.current.visible = s.t < 0.02;
+    if (material.current) material.current.emissiveIntensity = e * 0.9; // readable even in the dark
+
+    if (selected || s.t > 0.001) {
+      rig.readT = e;
+      rig.readPoint.copy(g.position);
+    }
+  });
 
   if (!painted) return null;
 
-  const [cx, cy] = rectCenter(item);
-  const z = itemZ(item);
   const fasten = item.fasten ?? "pin";
   const pins = (FASTENERS[fasten] ?? []).filter(
     (at) => !occupied.some((o) => Math.abs(o[0] - at[0]) * item.w < 40 && Math.abs(o[1] - at[1]) * item.h < 40)
   );
   const r = seeded(`${item.id}-pins`);
 
+  const handlers = readable
+    ? {
+        onPointerOver: (e) => {
+          e.stopPropagation();
+          if (rig.reading) return;
+          state.current.hovered = true;
+          document.body.style.cursor = "pointer";
+        },
+        onPointerOut: () => {
+          state.current.hovered = false;
+          document.body.style.cursor = "";
+        },
+        onClick: (e) => {
+          e.stopPropagation();
+          if (rig.dragging || rig.reading) return;
+          state.current.hovered = false;
+          document.body.style.cursor = "";
+          onRead(item.id);
+        },
+      }
+    : {};
+
   return (
-    <group position={[cx, cy, z]} rotation={[0, 0, (-(item.rot || 0) * Math.PI) / 180]}>
-      <mesh geometry={geometry} castShadow receiveShadow>
+    <group ref={group} position={board.pos} quaternion={board.quat}>
+      <mesh geometry={geometry} castShadow receiveShadow {...handlers}>
         <meshStandardMaterial
+          ref={material}
           map={painted.texture}
+          emissiveMap={painted.texture}
+          emissive="#ffffff"
+          emissiveIntensity={0}
           bumpMap={bump}
           bumpScale={painted.glossy ? 0.15 : 0.5}
           roughness={painted.glossy ? 0.32 : 0.88}
@@ -92,10 +214,15 @@ export default function Item({ item, occupied = [] }) {
           side={THREE.DoubleSide}
         />
       </mesh>
-      {pins.map((at) => (
-        <Pin key={at.join()} position={[...local(item, at), 0.004]} color={Math.floor(r() * 6)} />
-      ))}
-      {fasten === "tape" && <Tape position={[0, (item.h * UNIT) / 2 - 0.02, 0.01]} rot={(r() - 0.5) * 0.2} width={Math.min(1.1, item.w * UNIT * 0.4)} />}
+      {overlay && <mesh geometry={geometry} material={overlay} renderOrder={2} />}
+      <group ref={fasteners}>
+        {pins.map((at) => (
+          <Pin key={at.join()} position={[...local(item, at), 0.004]} color={Math.floor(r() * 6)} />
+        ))}
+        {fasten === "tape" && (
+          <Tape position={[0, (item.h * UNIT) / 2 - 0.02, 0.01]} rot={(r() - 0.5) * 0.2} width={Math.min(1.1, item.w * UNIT * 0.4)} />
+        )}
+      </group>
     </group>
   );
 }

@@ -1,4 +1,4 @@
-import { contact, subject } from "@/data/content";
+import { contact, socials, subject } from "@/data/content";
 import { todoLineY } from "@/data/boardLayout";
 import { INK, coffeeRing, field, font, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
 
@@ -34,35 +34,6 @@ export const dossier = {
     wrapText(ctx, subject.bio.join(" "), 30, y + 26, w - 60, 21, { maxLines: 5 });
 
     stamp(ctx, "CLASSIFIED", w - 112, 52, { f: fonts.display, size: 22, rot: 0.14, r });
-  },
-};
-
-export const clipping = {
-  paint(ctx, { w, h }, { fonts, r }) {
-    paperBase(ctx, w, h, { color: "#ddd6c3", r, shade: 0.2 });
-    ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.display, 12, 600);
-    ctx.fillText("THE DAILY COMMIT", 18, 24);
-    ctx.textAlign = "right";
-    ctx.fillText(`EST. ${subject.activeSince}`, w - 18, 24);
-    ctx.textAlign = "left";
-    ctx.fillRect(18, 31, w - 36, 1.5);
-    ctx.font = font(fonts.display, 30, 700);
-    ctx.fillText("15-YEAR-OLD DEV KEEPS SHIPPING", 18, 66);
-    ctx.font = "13px Georgia, serif";
-    const colW = (w - 52) / 2;
-    const text = `${subject.bio[0]} ${subject.bio[1]} ${subject.bio[2]}`;
-    const maxLines = Math.floor((h - 86) / 16);
-    wrapText(ctx, text, 18, 94, colW, 16, { maxLines });
-    wrapText(
-      ctx,
-      `${subject.tagline} Clients describe the work as "super fast", "efficient" and "exactly what I wanted".`,
-      34 + colW,
-      94,
-      colW,
-      16,
-      { maxLines }
-    );
   },
 };
 
@@ -122,44 +93,46 @@ export const crew = {
   paint(ctx, { w, h, props }, { fonts, r }) {
     const { witness } = props;
     paperBase(ctx, w, h, { color: "#f1eee6", r, shade: 0.08 });
-    const pad = 22;
+    const pad = 20;
 
     // header like an ID sheet
     ctx.fillStyle = INK.black;
     ctx.beginPath();
-    ctx.arc(pad + 18, pad + 18, 18, 0, Math.PI * 2);
+    ctx.arc(pad + 15, pad + 15, 15, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#f1eee6";
-    ctx.font = font(fonts.display, 15, 700);
+    ctx.font = font(fonts.display, 13, 700);
     ctx.textAlign = "center";
-    ctx.fillText(witness.name[0], pad + 18, pad + 24);
+    ctx.fillText(witness.name[0], pad + 15, pad + 20);
     ctx.textAlign = "left";
     ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.display, 13, 600);
-    ctx.fillText("WITNESS STATEMENT", pad + 46, pad + 24);
+    ctx.font = font(fonts.display, 12, 600);
+    ctx.fillText("WITNESS STATEMENT", pad + 38, pad + 20);
 
-    const photoW = 112;
+    const photoW = 84;
     const photoX = w - pad - photoW;
-    silhouette(ctx, photoX, pad + 52, photoW, 132);
-    ctx.fillStyle = "rgba(30,30,30,0.6)";
-    ctx.font = font(fonts.type, 10);
-    ctx.fillText("NO PHOTO ON FILE", photoX + 6, pad + 200);
+    silhouette(ctx, photoX, pad + 44, photoW, 100);
+    ctx.fillStyle = "rgba(30,30,30,0.55)";
+    ctx.font = font(fonts.type, 8);
+    ctx.fillText("NO PHOTO ON FILE", photoX + 2, pad + 156);
 
-    let y = pad + 64;
-    const fw = photoX - pad - 16;
-    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: 20 });
-    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: 20 });
-    field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: 20 });
+    let y = pad + 56;
+    const fw = photoX - pad - 14;
+    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: 17 });
+    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: 17 });
+    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: 17 });
 
-    y = pad + 236;
+    y += 6;
     ctx.fillStyle = "rgba(40,36,30,0.55)";
-    ctx.font = font(fonts.display, 12, 500);
+    ctx.font = font(fonts.display, 11, 500);
     ctx.fillText("STATEMENT", pad, y);
     ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 14);
-    wrapText(ctx, `"${witness.statement}"`, pad, y + 22, w - pad * 2, 19, { maxLines: 9 });
+    ctx.font = font(fonts.type, 12.5);
+    const lineH = 16;
+    const maxLines = Math.max(2, Math.floor((h - 70 - (y + 18)) / lineH));
+    wrapText(ctx, `"${witness.statement}"`, pad, y + 18, w - pad * 2, lineH, { maxLines });
 
-    stamp(ctx, "RECOMMENDS", w / 2, h - 34, { f: fonts.display, size: 20, rot: -0.06, color: INK.blue, r });
+    stamp(ctx, "RECOMMENDS", w / 2, h - 28, { f: fonts.display, size: 17, rot: -0.06, color: INK.blue, r });
   },
 };
 
@@ -195,7 +168,7 @@ export const indexcard = {
     ctx.fillText(job.company, 22, 86);
     ctx.fillStyle = INK.blue;
     ctx.font = font(fonts.hand, 26, 500);
-    job.highlights.slice(0, 5).forEach((line, i) => ctx.fillText(`– ${line}`, 30, 116 + i * 30));
+    job.highlights.slice(0, Math.floor((h - 100) / 30)).forEach((line, i) => ctx.fillText(`– ${line}`, 30, 116 + i * 30));
   },
 };
 
@@ -203,10 +176,10 @@ export const flyer = {
   /** Tear-off tabs along the bottom; one has already been taken. */
   alpha: true,
   paint(ctx, { w, h }, { fonts, r }) {
-    const tabsTop = h * 0.66;
-    const tabs = 7;
+    const tabsTop = h * 0.64;
+    const tabs = 8;
     const tabW = w / tabs;
-    const missing = 2;
+    const missing = 3;
 
     ctx.save();
     ctx.beginPath();
@@ -218,17 +191,17 @@ export const flyer = {
 
     ctx.fillStyle = INK.black;
     ctx.textAlign = "center";
-    ctx.font = font(fonts.display, 40, 700);
-    ctx.fillText("LET'S WORK", w / 2, 58);
-    ctx.fillText("TOGETHER!", w / 2, 100);
-    ctx.font = font(fonts.type, 14);
-    ctx.fillText("Websites · apps · motion · bots", w / 2, 128);
+    ctx.font = font(fonts.display, 34, 700);
+    ctx.fillText("LET'S WORK TOGETHER!", w / 2, 48);
     ctx.fillStyle = INK.red;
-    ctx.font = font(fonts.marker, 21);
-    ctx.fillText(contact.email, w / 2, 164);
+    ctx.font = font(fonts.marker, 22);
+    ctx.fillText(contact.email, w / 2, 84);
     ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 12);
-    ctx.fillText(`Replies in ${contact.timezone}`, w / 2, 186);
+    ctx.font = font(fonts.type, 13);
+    const handles = socials.filter((s) => s.id !== "server").map((s) => `${s.label}: ${s.handle}`);
+    ctx.fillText(handles.join("  ·  "), w / 2, 114, w - 30);
+    ctx.font = font(fonts.type, 11);
+    ctx.fillText(`Replies in ${contact.timezone}`, w / 2, 138);
     ctx.textAlign = "left";
 
     // perforation
@@ -240,14 +213,14 @@ export const flyer = {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.font = font(fonts.type, 11);
+    ctx.font = font(fonts.type, 9.5);
     ctx.fillStyle = INK.type;
     for (let i = 0; i < tabs; i++) {
       if (i === missing) continue;
       ctx.save();
-      ctx.translate(i * tabW + tabW / 2 + 4, h - 8);
+      ctx.translate(i * tabW + tabW / 2 + 3, h - 6);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText(contact.email, 0, 0);
+      ctx.fillText(contact.email, 0, 0, h - tabsTop - 12);
       ctx.restore();
     }
   },

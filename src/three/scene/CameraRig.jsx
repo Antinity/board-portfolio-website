@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { MathUtils, Plane, Raycaster, Vector3 } from "three";
-import { BOARD_H, BOARD_W, FRAME, UNIT, rectCenter } from "../space";
+import { BOARD_H, BOARD_W, FRAME } from "../space";
 import { damp } from "../rig";
 
 const MIN_DIST = 2.6;
@@ -14,9 +14,10 @@ const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
  * Perspective camera over the board.
  *  - zoomed out, the board always covers the whole screen
  *  - drag to pan, wheel / pinch to zoom toward the pointer
- *  - `focus` (board-pixel rect) flies to a section, leaving `insetRight` px free
+ *  - opens close on the subject, then pulls back
+ *  - input is paused while a page is being read
  */
-export default function CameraRig({ rig, focus, insetRight = 0 }) {
+export default function CameraRig({ rig }) {
   const { camera, gl, size } = useThree();
   const view = useRef({ x: 0, y: 0, d: 30, lambda: 3 }); // target
   const cur = useRef({ x: 0, y: 0, d: 34 }); // smoothed
@@ -44,27 +45,29 @@ export default function CameraRig({ rig, focus, insetRight = 0 }) {
     return v;
   };
 
-  // Fly to the focused section, or back out to the overview.
+  // Intro: open close on the subject, then pull back to reveal the board.
   useEffect(() => {
     const v = view.current;
-    if (focus) {
-      const [cx, cy] = rectCenter(focus);
-      const availW = Math.max(size.width - insetRight, 1) / size.width;
-      const pad = 1.18;
-      const vis1 = visible(1);
-      v.d = Math.max((focus.w * UNIT * pad) / (vis1.w * availW), (focus.h * UNIT * pad) / vis1.h, MIN_DIST);
-      v.x = cx + (visible(v.d).w * (1 - availW)) / 2;
-      v.y = cy;
-      v.lambda = 2.6;
-    } else {
-      v.d = coverDist();
+    const c = cur.current;
+    c.x = v.x = rig.home.x;
+    c.y = v.y = rig.home.y;
+    c.d = v.d = coverDist() * 0.45;
+    const t = setTimeout(() => {
       v.x = 0;
       v.y = 0;
-      v.lambda = 2.6;
+      v.d = coverDist();
+      v.lambda = 1.3;
       clampView(v);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- geometry helpers read live camera values
-  }, [focus, insetRight, size.width, size.height]);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []);
+
+  // Stay inside the board when the viewport changes.
+  useEffect(() => {
+    clampView(view.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read live camera values
+  }, [size.width, size.height]);
 
   // Input: drag, wheel, pinch.
   useEffect(() => {
@@ -124,6 +127,7 @@ export default function CameraRig({ rig, focus, insetRight = 0 }) {
 
     const onDown = (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (rig.reading) return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
       if (pointers.size === 2) pinchDist = 0;
       const [nx, ny] = toNdc(e);
@@ -141,6 +145,7 @@ export default function CameraRig({ rig, focus, insetRight = 0 }) {
     };
     const onWheel = (e) => {
       e.preventDefault();
+      if (rig.reading) return;
       const unit = e.deltaMode === 1 ? 16 : 1;
       zoomBy(Math.exp(e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0012)));
     };
@@ -182,8 +187,11 @@ export default function CameraRig({ rig, focus, insetRight = 0 }) {
     rig.zoomBlur = ((prev.d - c.d) / c.d) * (fps / 60);
 
     // where on the board is the pointer?
-    ray.current.setFromCamera(rig.pointer, camera);
-    if (ray.current.ray.intersectPlane(BOARD_PLANE, hit.current)) rig.cursor.copy(hit.current);
+    if (!rig.pointerActive) rig.cursor.copy(rig.home);
+    else {
+      ray.current.setFromCamera(rig.pointer, camera);
+      if (ray.current.ray.intersectPlane(BOARD_PLANE, hit.current)) rig.cursor.copy(hit.current);
+    }
   });
 
   return null;

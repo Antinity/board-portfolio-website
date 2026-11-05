@@ -1,0 +1,238 @@
+/*
+ * Reading screen text, in the style of game note screens: no panel, just
+ * light text over the darkened, blurred board. Layout must match
+ * READ_LAYOUT in src/components/InvestigationBoard.jsx.
+ */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  color: #ece6d8;
+  font-family: var(--font-type);
+  opacity: 0;
+  transition: opacity 0.5s ease 0.15s;
+}
+
+.root[data-open] {
+  opacity: 1;
+}
+
+/* ---------- Transcript ---------- */
+
+.transcript {
+  position: absolute;
+  right: 6vw;
+  top: 14vh;
+  bottom: 16vh;
+  width: min(420px, 32vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  user-select: text;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  animation: rise 0.6s ease 0.25s both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.kicker {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #c9484c;
+}
+
+.title {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.6vw, 36px);
+  font-weight: 600;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.body {
+  margin-top: 22px;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.body > * + * {
+  margin-top: 14px;
+}
+
+.muted {
+  opacity: 0.6;
+}
+
+.hand {
+  font-family: var(--font-marker);
+  font-size: 26px;
+}
+
+.link {
+  color: #f2d27a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.link:hover,
+.link:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.fields {
+  display: grid;
+  gap: 4px;
+}
+
+.fields > div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.fields dt {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  padding-top: 4px;
+}
+
+.list {
+  padding-left: 18px;
+  list-style: "— ";
+}
+
+.quote {
+  font-size: 16px;
+  line-height: 1.8;
+  padding-left: 14px;
+  border-left: 2px solid #c9484c;
+}
+
+.group h3 {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #c9484c;
+  margin: 18px 0 6px;
+}
+
+.entry + .entry {
+  margin-top: 12px;
+}
+
+.entry h4 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Controls ---------- */
+
+.controls {
+  position: absolute;
+  left: 50%;
+  bottom: 4.5vh;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.controls button {
+  padding: 8px 12px;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.controls button:hover,
+.controls button:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.controls kbd {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  font-family: var(--font-type);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.count {
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+.textToggle {
+  display: none;
+}
+
+/* ---------- Narrow screens: page fills the view, text on demand ---------- */
+
+@media (width < 900px) {
+  .transcript {
+    inset: 8vh 6vw 14vh;
+    width: auto;
+    padding: 24px 22px;
+    background: rgb(6 6 8 / 0.88);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    animation: none;
+  }
+
+  .root[data-text] .transcript {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .textToggle {
+    display: inline;
+  }
+
+  .controls {
+    gap: 2px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  .controls kbd {
+    display: none;
+  }
+}

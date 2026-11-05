@@ -2,9 +2,9 @@ import * as THREE from "three";
 import { loadFonts } from "../fonts";
 import { makeCanvas } from "../textures/procedural";
 import { seeded } from "./common";
-import { clipping, crew, dossier, flyer, indexcard, todo } from "./documents";
+import { crew, dossier, flyer, indexcard, todo } from "./documents";
 import { polaroid, print } from "./photos";
-import { blueprint, card, label, sticky, tag } from "./props";
+import { label, sticky, tag } from "./props";
 
 /**
  * Painter registry. A painter is `{ paint(ctx, item, env), images?, glossy?, alpha? }`:
@@ -13,7 +13,7 @@ import { blueprint, card, label, sticky, tag } from "./props";
  *  - glossy: photo paper (lower roughness)
  *  - alpha:  has transparent cut-outs
  */
-export const PAINTERS = { blueprint, card, clipping, crew, dossier, flyer, indexcard, label, polaroid, print, sticky, tag, todo };
+export const PAINTERS = { crew, dossier, flyer, indexcard, label, polaroid, print, sticky, tag, todo };
 
 /** Texture pixels per board pixel (capped so nothing exceeds 2048px). */
 const DENSITY = 2.4;

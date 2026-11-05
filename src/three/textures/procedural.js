@@ -113,9 +113,9 @@ export function paperBumpTexture() {
 }
 
 /**
- * Flashlight "cookie": what the light looks like through an old, damaged
- * torch lens — a tight Maglite hotspot, a darker reflector band, a faint outer
- * ring, plus scratches, a crack and grime that project onto the board.
+ * Flashlight "cookie": what the light looks like through a worn torch lens —
+ * a small, tight Maglite hotspot, a dimmer reflector band and a soft outer
+ * ring, with only the faintest grime, hairline scratches and one tiny chip.
  */
 export function damagedGlassCookie() {
   const S = 512;
@@ -130,72 +130,68 @@ export function damagedGlassCookie() {
   const g = c.createRadialGradient(m, m, 0, m, m, m);
   [
     [0, 1],
-    [0.12, 0.98],
-    [0.2, 0.78], // hotspot edge
-    [0.26, 0.42],
-    [0.36, 0.3], // reflector band (dimmer)
-    [0.46, 0.36],
-    [0.52, 0.42], // faint outer ring
-    [0.58, 0.22],
-    [0.75, 0.08],
+    [0.06, 0.97],
+    [0.11, 0.78], // hotspot edge (small)
+    [0.17, 0.5],
+    [0.3, 0.36], // reflector band
+    [0.42, 0.38],
+    [0.48, 0.4], // faint outer ring
+    [0.56, 0.24],
+    [0.75, 0.09],
     [1, 0],
   ].forEach(([at, v]) => g.addColorStop(at, `rgba(255,255,255,${v})`));
   c.fillStyle = g;
   c.fillRect(0, 0, S, S);
 
-  // concentric reflector ripples
   c.globalCompositeOperation = "multiply";
-  for (let i = 0; i < 9; i++) {
-    const rad = m * (0.22 + i * 0.045);
-    c.strokeStyle = `rgba(0,0,0,${0.035 + r() * 0.045})`;
-    c.lineWidth = 2 + r() * 4;
+
+  // subtle reflector ripples
+  for (let i = 0; i < 7; i++) {
+    const rad = m * (0.16 + i * 0.05);
+    c.strokeStyle = `rgba(0,0,0,${0.02 + r() * 0.03})`;
+    c.lineWidth = 2 + r() * 3;
     c.beginPath();
-    c.arc(m + (r() - 0.5) * 4, m + (r() - 0.5) * 4, rad, 0, Math.PI * 2);
+    c.arc(m + (r() - 0.5) * 3, m + (r() - 0.5) * 3, rad, 0, Math.PI * 2);
     c.stroke();
   }
 
-  // grime blotches
-  for (let i = 0; i < 18; i++) {
-    const x = m + (r() - 0.5) * m * 1.1;
-    const y = m + (r() - 0.5) * m * 1.1;
-    const rad = 10 + r() * 40;
+  // a whisper of grime
+  for (let i = 0; i < 6; i++) {
+    const x = m + (r() - 0.5) * m;
+    const y = m + (r() - 0.5) * m;
+    const rad = 14 + r() * 26;
     const bg = c.createRadialGradient(x, y, 0, x, y, rad);
-    bg.addColorStop(0, `rgba(0,0,0,${0.12 + r() * 0.18})`);
+    bg.addColorStop(0, `rgba(0,0,0,${0.04 + r() * 0.05})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = bg;
     c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
   }
 
-  // scratches
-  for (let i = 0; i < 26; i++) {
-    const x = m + (r() - 0.5) * m;
-    const y = m + (r() - 0.5) * m;
+  // a few hairline scratches
+  for (let i = 0; i < 7; i++) {
+    const x = m + (r() - 0.5) * m * 0.9;
+    const y = m + (r() - 0.5) * m * 0.9;
     const a = r() * Math.PI;
-    const l = 20 + r() * 110;
-    c.strokeStyle = `rgba(0,0,0,${0.18 + r() * 0.3})`;
-    c.lineWidth = 0.6 + r() * 1.3;
+    const l = 12 + r() * 40;
+    c.strokeStyle = `rgba(0,0,0,${0.06 + r() * 0.07})`;
+    c.lineWidth = 0.5 + r() * 0.5;
     c.beginPath();
     c.moveTo(x, y);
-    c.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + (r() - 0.5) * 10, y + Math.sin(a) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l);
+    c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
     c.stroke();
   }
 
-  // a crack running across one side of the lens
-  c.strokeStyle = "rgba(0,0,0,0.75)";
-  c.lineWidth = 2.2;
+  // one tiny chip near the rim
+  c.strokeStyle = "rgba(0,0,0,0.22)";
+  c.lineWidth = 1;
   c.beginPath();
-  let x = m * 0.62;
-  let y = m * 0.5;
+  let x = m + m * 0.36;
+  let y = m - m * 0.18;
   c.moveTo(x, y);
-  for (let i = 0; i < 14; i++) {
-    x += 9 + r() * 12;
-    y += (r() - 0.3) * 18;
+  for (let i = 0; i < 4; i++) {
+    x += 4 + r() * 5;
+    y += (r() - 0.4) * 6;
     c.lineTo(x, y);
-    if (r() < 0.3) {
-      c.moveTo(x, y);
-      c.lineTo(x + (r() - 0.5) * 40, y + 20 + r() * 30);
-      c.moveTo(x, y);
-    }
   }
   c.stroke();
 

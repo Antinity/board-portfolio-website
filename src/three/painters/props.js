@@ -1,6 +1,6 @@
-import { INK, font, paperBase, scribbleLine } from "./common";
+import { INK, font, paperBase } from "./common";
 
-/* Labels, notes, tags, cards and the blueprint. */
+/* Tape labels, sticky notes and evidence tags. */
 
 /** Strip of grey gaffer tape with a marker label, like the reference board. */
 export const label = {
@@ -102,126 +102,7 @@ export const tag = {
     ctx.fillStyle = INK.black;
     ctx.font = font(fonts.marker, 24);
     ctx.fillText(group.group, 54, 54);
-    ctx.font = font(fonts.hand, 21, 500);
-    const colW = (w - 64) / 2;
-    group.items.forEach((item, i) => {
-      const col = i < Math.ceil(group.items.length / 2) ? 0 : 1;
-      const row = col ? i - Math.ceil(group.items.length / 2) : i;
-      ctx.fillText(item, 54 + col * colW, 80 + row * 19);
-    });
-  },
-};
-
-/** Business-card-ish social contact. */
-export const card = {
-  paint(ctx, { w, h, props }, { fonts, r }) {
-    const { social } = props;
-    const dark = social.id === "x";
-    paperBase(ctx, w, h, { color: dark ? "#1d1c1a" : "#f6f4ee", r, shade: dark ? 0 : 0.05 });
-    ctx.fillStyle = dark ? "#eeeae0" : INK.black;
-    ctx.font = font(fonts.display, 30, 700);
-    ctx.fillText(social.label.toUpperCase(), 18, 46);
-    ctx.font = font(fonts.type, 18);
-    ctx.fillText(social.handle, 18, 82);
-    ctx.globalAlpha = 0.6;
-    ctx.font = font(fonts.type, 11);
-    ctx.fillText(social.url.replace(/^https?:\/\//, ""), 18, h - 18);
-    ctx.globalAlpha = 1;
-  },
-};
-
-/** Blueprint sheet: grid, a floor plan, dimension lines and a title block. */
-export const blueprint = {
-  paint(ctx, { w, h, props }, { fonts, r }) {
-    const g = ctx.createRadialGradient(w * 0.3, h * 0.3, 0, w / 2, h / 2, w * 0.8);
-    g.addColorStop(0, "#2d5bb0");
-    g.addColorStop(1, "#173b80");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 8) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 8) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    for (let x = 0; x < w; x += 40) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 40) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
-    // floor plan
-    ctx.strokeStyle = "rgba(235,242,255,0.85)";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(w * 0.06, h * 0.08, w * 0.88, h * 0.78);
-    ctx.lineWidth = 2;
-    const rooms = [
-      [0.06, 0.08, 0.36, 0.45],
-      [0.42, 0.08, 0.3, 0.5],
-      [0.72, 0.08, 0.22, 0.78],
-      [0.06, 0.53, 0.66, 0.33],
-    ];
-    rooms.forEach(([x, y, rw, rh]) => ctx.strokeRect(w * x, h * y, w * rw, h * rh));
-    // doors
-    ctx.lineWidth = 1.5;
-    [
-      [0.42, 0.3, 0],
-      [0.72, 0.45, Math.PI],
-      [0.3, 0.53, -Math.PI / 2],
-    ].forEach(([x, y, a]) => {
-      ctx.beginPath();
-      ctx.arc(w * x, h * y, 28, a, a + Math.PI / 2);
-      ctx.stroke();
-    });
-    // desk + monitors + chair in the main room
-    ctx.strokeRect(w * 0.47, h * 0.14, w * 0.2, h * 0.08);
-    ctx.strokeRect(w * 0.5, h * 0.15, w * 0.05, h * 0.02);
-    ctx.strokeRect(w * 0.58, h * 0.15, w * 0.05, h * 0.02);
-    ctx.beginPath();
-    ctx.arc(w * 0.57, h * 0.32, 18, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(235,242,255,0.8)";
-    ctx.font = font(fonts.type, 13);
-    ctx.fillText("DESK", w * 0.48, h * 0.26);
-    ctx.fillText("SERVER", w * 0.76, h * 0.2);
-    ctx.fillText("STORAGE", w * 0.09, h * 0.62);
-
-    // dimension line
-    ctx.setLineDash([6, 5]);
-    ctx.beginPath();
-    ctx.moveTo(w * 0.06, h * 0.92);
-    ctx.lineTo(w * 0.94, h * 0.92);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // title block
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(w - 230, h - 62, 214, 48);
-    ctx.font = font(fonts.display, 15, 600);
-    ctx.fillText(props.title.toUpperCase(), w - 220, h - 32);
-
-    // red marker route (someone planned something)
-    ctx.strokeStyle = "rgba(220,40,40,0.85)";
-    ctx.lineWidth = 3;
-    scribbleLine(ctx, w * 0.75, h * 0.8, w * 0.75, h * 0.5, r, 3);
-    scribbleLine(ctx, w * 0.75, h * 0.5, w * 0.58, h * 0.36, r, 3);
+    ctx.font = font(fonts.hand, 22, 500);
+    group.items.forEach((item, i) => ctx.fillText(item, 54, 84 + i * 20));
   },
 };

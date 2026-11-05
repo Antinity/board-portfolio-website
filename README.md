@@ -1,10 +1,12 @@
 # Antinity — Investigation Board Portfolio
 
-Lakshya Kumar's portfolio as a 3D evidence board in a dark room. A hand-held torch lights the
-board; click any cluster of evidence to fly to it and open its case file.
+Lakshya Kumar's portfolio as a 3D evidence board in a moonlit room. A hand-held torch lights the
+board; hover a document to highlight it, click to pick it up and read it — like the notes and
+letters in Resident Evil or The Last of Us.
 
-- **Drag** to pan · **scroll / pinch** to zoom · **click** a section to open it
-- **1–7** jump to an exhibit · **← / →** step through · **Esc** closes · **F** toggles the torch
+- **Drag** to pan · **scroll / pinch** to zoom · **click** a document to read it
+- While reading: **← / →** previous / next document · **Esc** (or click outside) puts it back
+- **F** toggles the torch
 - `?fx=high | low | off` forces the post-processing quality (auto-detected otherwise)
 
 ```bash
@@ -18,7 +20,7 @@ npm run dev
 | Everything the board says about you    | `src/data/content.js`                        |
 | What's pinned where + red strings      | `src/data/boardLayout.js`                    |
 | How a piece of evidence is drawn       | `src/three/painters/*`                       |
-| Expanded case-file content             | `src/sections/files.jsx`                     |
+| Reading-view transcripts               | `src/reading/transcripts.jsx`                |
 | Torch feel (size, brightness, weight)  | `TORCH` in `src/three/scene/Flashlight.jsx`  |
 | Post-processing strengths              | `src/three/scene/PostFX.jsx`                 |
 
@@ -30,27 +32,28 @@ Images live in `public/evidence/`.
 src/
   data/
     content.js        facts (subject, projects, to-dos, experience, witnesses, stack, contact)
-    boardLayout.js    SECTIONS (click areas), ITEMS (each paper/photo), LINKS (red strings)
+    boardLayout.js    SECTIONS (labels), ITEMS (each paper/photo), LINKS (red strings)
   three/
     Experience.jsx    <Canvas>: board, items, strings, targets, torch, camera, post FX
     painters/         canvas-2D painters → textures (dossier, print, todo, crew sheet, flyer…)
     scene/
       BoardSurface    cork (procedural texture + bump) in an aluminium frame
-      Item            curled paper mesh + pins / tape
+      Item            curled paper + pins / tape; hover overlay; lifts off to be read
+      ReadingBackdrop dark veil behind a page being read (click to put it back)
       RedStrings      sagging yarn between two specific items, pinned at both ends
-      SectionTargets  invisible click areas + animated red marker loop on hover
-      Flashlight      shadow-casting spotlight through a damaged-lens cookie texture
-      CameraRig       cover-fit camera, drag / wheel / pinch, flights to sections
+      Flashlight      shadow-casting spotlight through a worn-lens cookie texture
+      CameraRig       cover-fit camera, drag / wheel / pinch, intro on the subject
       PostFX          SSAO, depth of field, bloom, motion blur, lens distortion, grain
     effects/          custom motion-blur + lens (barrel + chromatic aberration) effects
-  sections/           case-file panel content per section
-  components/         app shell + case-file panel (HTML, accessible)
+  reading/            transcript + controls shown beside a page being read (HTML)
+  components/         app shell
 ```
 
 ### Adding evidence
 
 1. Add the facts to `content.js`.
-2. Add an item to `ITEMS` in `boardLayout.js` (`kind` picks a painter; positions are in board
-   pixels on a 2400 × 1400 cork).
+2. Add an item to `ITEMS` in `boardLayout.js` (`kind` picks a painter and a transcript;
+   positions are in board pixels on a 2800 × 1600 cork).
 3. Connect it with a `LINKS` entry if it relates to something else on the board.
-4. New look? Add a painter in `src/three/painters` and register it in `painters/index.js`.
+4. New kind? Add a painter in `src/three/painters` (register it in `painters/index.js`) and a
+   transcript in `src/reading/transcripts.jsx`.

@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { MathUtils, Object3D, Vector3 } from "three";
+import { Object3D, Vector3 } from "three";
 import { damagedGlassCookie } from "../textures/procedural";
 
 /** Tunables for the feel of the torch. */
 const TORCH = {
   intensity: 3.1, // overall brightness
-  coneScale: 0.72, // beam size relative to the screen height
+  radius: 6.2, // beam radius on the board, world units — constant at every zoom
   hold: new Vector3(0.12, -0.16, 0), // where the hand holds it, × camera distance
   smoothTime: 0.16, // seconds for the aim to catch up (higher = heavier torch)
   maxSpeed: 26, // world units / second the aim can travel
-  sway: 0.012, // hand wobble, × camera distance
+  sway: 0.16, // hand wobble, world units
   flickerChance: 0.05, // flickers per second
 };
 
@@ -60,7 +60,7 @@ export default function Flashlight({ rig, on = true }) {
 
     // aim: heavy, smooth follow (no beam stretching)
     smoothDamp(rig.aim, rig.cursor, s.vel, calm ? 0.05 : TORCH.smoothTime, TORCH.maxSpeed, dt);
-    const sway = calm ? 0 : TORCH.sway * dist;
+    const sway = calm ? 0 : TORCH.sway;
     target.position.set(
       rig.aim.x + (Math.sin(t * 1.3) * 0.6 + Math.sin(t * 0.47 + 1.2) * 0.9) * sway,
       rig.aim.y + (Math.cos(t * 1.1) * 0.6 + Math.sin(t * 0.39 + 0.4) * 0.9) * sway,
@@ -75,9 +75,8 @@ export default function Flashlight({ rig, on = true }) {
       camera.position.z * 0.98
     );
 
-    // beam keeps a constant size on screen at any zoom
-    const tanHalf = Math.tan(MathUtils.degToRad(camera.fov / 2));
-    l.angle = Math.min(Math.atan(TORCH.coneScale * tanHalf), 1.2);
+    // beam keeps a constant size on the board: zooming in doesn't shrink it
+    l.angle = Math.min(Math.atan(TORCH.radius / l.position.distanceTo(target.position)), 1.45);
     l.shadow.camera.far = dist * 2;
 
     // power: boot-up stutter, on/off fade, random flicker

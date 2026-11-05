@@ -2,33 +2,44 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import { SECTIONS } from "@/sections";
+import { READABLE, SECTIONS } from "@/data/boardLayout";
 import { subject } from "@/data/content";
-import { panelInset } from "@/lib/panel";
-import CaseFile from "@/components/case-file/CaseFile";
+import { transcriptFor } from "@/reading/transcripts";
+import ReadingView from "@/reading/ReadingView";
 
 // WebGL only runs in the browser.
 const Experience = dynamic(() => import("@/three/Experience"), { ssr: false });
 
 /**
- * App shell: owns which exhibit is open and whether the torch is on, and wires
- * the 3D board to the case-file panel. No HUD — the board is the interface.
+ * Where a page is held while reading, as fractions of the visible area.
+ * Wide screens leave the right side free for the transcript (see reading.module.css).
+ */
+function readLayoutFor(width) {
+  return width >= 900 ? { shift: -0.17, height: 0.8, width: 0.52 } : { shift: 0, height: 0.7, width: 0.9 };
+}
+
+/**
+ * App shell: which page is being read, torch on/off, and keyboard access.
+ * No HUD — the board is the interface.
  *
- * Keyboard: 1–7 open an exhibit, ← / → step through, Esc closes, F toggles the torch.
+ * Keyboard: ← / → step through documents while reading, Esc puts it back,
+ * F toggles the torch. A visually hidden list gives screen readers and
+ * keyboard users a way into every document.
  */
 export default function InvestigationBoard() {
-  const [activeId, setActiveId] = useState(null);
+  const [readingId, setReadingId] = useState(null);
   const [torchOn, setTorchOn] = useState(true);
-  const [inset, setInset] = useState(0);
+  const [readLayout, setReadLayout] = useState(() => readLayoutFor(1280));
 
-  const active = SECTIONS.find((s) => s.id === activeId) ?? null;
+  const index = READABLE.findIndex((i) => i.id === readingId);
+  const reading = READABLE[index] ?? null;
 
-  const close = useCallback(() => setActiveId(null), []);
+  const close = useCallback(() => setReadingId(null), []);
   const step = useCallback(
     (dir) =>
-      setActiveId((id) => {
-        const i = SECTIONS.findIndex((s) => s.id === id);
-        return SECTIONS[(i + dir + SECTIONS.length) % SECTIONS.length].id;
+      setReadingId((id) => {
+        const i = READABLE.findIndex((it) => it.id === id);
+        return READABLE[(i + dir + READABLE.length) % READABLE.length].id;
       }),
     []
   );
@@ -36,7 +47,7 @@ export default function InvestigationBoard() {
   const next = useCallback(() => step(1), [step]);
 
   useEffect(() => {
-    const measure = () => setInset(panelInset(window.innerWidth));
+    const measure = () => setReadLayout(readLayoutFor(window.innerWidth));
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -46,8 +57,6 @@ export default function InvestigationBoard() {
     const onKey = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, textarea, [contenteditable]")) return;
       if (e.key === "f" || e.key === "F") setTorchOn((v) => !v);
-      const n = Number(e.key);
-      if (n >= 1 && n <= SECTIONS.length) setActiveId(SECTIONS[n - 1].id);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -59,22 +68,21 @@ export default function InvestigationBoard() {
         {subject.name} ({subject.alias}) — {subject.role}
       </h1>
 
-      <Experience activeId={activeId} focus={active?.bounds ?? null} insetRight={active ? inset : 0} onSelect={setActiveId} torchOn={torchOn} />
+      <Experience readingId={readingId} onRead={setReadingId} onClose={close} torchOn={torchOn} readLayout={readLayout} />
 
-      {/* Screen-reader / keyboard route into every exhibit */}
-      <nav className="sr-only" aria-label="Exhibits">
+      <nav className="sr-only" aria-label="Documents on the board">
         <ul>
-          {SECTIONS.map((s) => (
-            <li key={s.id}>
-              <button type="button" onClick={() => setActiveId(s.id)}>
-                Exhibit {s.exhibit}: {s.title}
+          {READABLE.map((item) => (
+            <li key={item.id}>
+              <button type="button" onClick={() => setReadingId(item.id)}>
+                {SECTIONS[item.section]?.title}: {transcriptFor(item).title}
               </button>
             </li>
           ))}
         </ul>
       </nav>
 
-      <CaseFile section={active} onClose={close} onPrev={prev} onNext={next} />
+      <ReadingView item={reading} index={index} total={READABLE.length} onClose={close} onPrev={prev} onNext={next} />
     </>
   );
 }

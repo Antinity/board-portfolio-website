@@ -2,26 +2,58 @@
 
 import { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ITEMS } from "@/data/boardLayout";
+import { Vector3 } from "three";
+import { HOME_ITEM, ITEMS, itemById } from "@/data/boardLayout";
 import { createRig } from "./rig";
+import { rectCenter } from "./space";
 import BoardSurface from "./scene/BoardSurface";
 import Item from "./scene/Item";
 import RedStrings, { stringPinsByItem } from "./scene/RedStrings";
-import SectionTargets from "./scene/SectionTargets";
 import Flashlight from "./scene/Flashlight";
 import CameraRig from "./scene/CameraRig";
+import ReadingBackdrop from "./scene/ReadingBackdrop";
 import PostFX from "./scene/PostFX";
 
+/** Cold light through a high window: everything stays faintly visible. */
+function Moonlight() {
+  return (
+    <>
+      <hemisphereLight args={["#4a5878", "#120e0a", 0.16]} />
+      <directionalLight
+        color="#9fb4e8"
+        intensity={0.55}
+        position={[-14, 12, 16]}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0005}
+        shadow-normalBias={0.02}
+        shadow-camera-left={-16}
+        shadow-camera-right={16}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+        shadow-camera-near={1}
+        shadow-camera-far={60}
+      />
+    </>
+  );
+}
+
 /**
- * The 3D board: cork + frame, every item, red strings, click targets,
- * camera, torch and post-processing.
+ * The 3D board: cork + frame, every item, red strings, torch, moonlight,
+ * camera and post-processing.
  *
- * @param {object|null} focus       section bounds to fly to (null = overview)
- * @param {number}      insetRight  px covered by the case-file panel
+ * @param {string|null} readingId   item currently held up to read
+ * @param {(id: string) => void} onRead
+ * @param {() => void}  onClose     put the page back
+ * @param {{shift:number,height:number,width:number}} readLayout  reading pose
  */
-export default function Experience({ activeId, focus, insetRight, onSelect, torchOn }) {
-  const rig = useMemo(() => createRig(), []);
+export default function Experience({ readingId, onRead, onClose, torchOn, readLayout }) {
+  const rig = useMemo(() => {
+    const [x, y] = rectCenter(itemById[HOME_ITEM]);
+    return createRig(new Vector3(x, y, 0));
+  }, []);
   const occupied = useMemo(() => stringPinsByItem(), []);
+
   // Client-only component (loaded with ssr: false), so window is available here.
   // Override with ?fx=high | low | off.
   const [quality] = useState(() => {
@@ -35,23 +67,30 @@ export default function Experience({ activeId, focus, insetRight, onSelect, torc
       shadows
       flat
       dpr={[1, quality === "high" ? 1.5 : 1.25]}
-      camera={{ fov: 32, near: 0.5, far: 120, position: [0, 0, 34] }}
+      camera={{ fov: 32, near: 0.3, far: 120, position: [0, 0, 34] }}
       gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
     >
       <color attach="background" args={["#050505"]} />
-      {/* barely-there cold room light so the board never goes fully black */}
-      <hemisphereLight args={["#5d6a80", "#1a140e", 0.38]} />
+      <Moonlight />
 
       <BoardSurface />
       {ITEMS.map((item) => (
-        <Item key={item.id} item={item} occupied={occupied[item.id]} />
+        <Item
+          key={item.id}
+          item={item}
+          occupied={occupied[item.id]}
+          rig={rig}
+          selected={item.id === readingId}
+          onRead={onRead}
+          readLayout={readLayout}
+        />
       ))}
       <RedStrings />
-      <SectionTargets rig={rig} activeId={activeId} onSelect={onSelect} />
+      <ReadingBackdrop rig={rig} readingId={readingId} onClose={onClose} />
 
       <Flashlight rig={rig} on={torchOn} />
-      <CameraRig rig={rig} focus={focus} insetRight={insetRight} />
+      <CameraRig rig={rig} />
       {quality !== "off" && <PostFX rig={rig} quality={quality} />}
     </Canvas>
   );
