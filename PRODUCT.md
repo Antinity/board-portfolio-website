@@ -21,7 +21,7 @@ A personal portfolio for Lakshya Kumar (Antinity) presented as an interactive in
 
 ## Positioning
 
-The portfolio itself is the proof of craft: a cinematic, game-quality WebGL experience built by the subject, rather than a template. "Built different."
+The portfolio itself is the proof of craft: a cinematic, game-quality WebGL experience built by the subject, rather than a template.
 
 ## Operating Context
 
@@ -37,8 +37,7 @@ The portfolio itself is the proof of craft: a cinematic, game-quality WebGL expe
 
 ## Brand Commitments
 
-- Name: Lakshya Kumar, alias "Antinity". Role: full-stack developer & designer. Line: "Don't you think I might be built different."
-- Prototype site identity (user-provided reference): deep navy with sage-green, cloud/grid textures.
+- Name: Lakshya Kumar, alias "Antinity". Role: full-stack developer & designer.
 
 ## Evidence on Hand
 
