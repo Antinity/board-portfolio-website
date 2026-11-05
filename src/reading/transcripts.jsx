@@ -1,4 +1,4 @@
-import { contact, socials, subject } from "@/data/content";
+import { subject } from "@/data/content";
 
 /*
  * Transcripts: the text of each kind of evidence, given to screen readers
@@ -26,34 +26,15 @@ const Fields = ({ rows }) => (
 );
 
 const TRANSCRIPTS = {
-  poster: () => ({
-    title: subject.name,
-    body: (
-      <>
-        <p>
-          Hey, I&apos;m {subject.firstName} — {subject.role}. {subject.headline.join(" ")}
-        </p>
-        <p>{subject.intro}</p>
-      </>
-    ),
-  }),
-
-  polaroid: () => ({
-    title: subject.name,
-    body: <p>Polaroid of {subject.name} ({subject.alias}), pinned to the centre of the board.</p>,
-  }),
-
-  dossier: () => ({
-    title: "Subject file",
+  profile: () => ({
+    title: "Profile of the suspect",
     body: (
       <>
         <Fields
           rows={[
             ["Name", subject.name],
-            ["Alias", subject.alias],
-            ["Age", subject.age],
+            ["Known as", subject.alias],
             ["Origin", subject.origin],
-            ["Timezone", subject.timezone],
             ["Active since", subject.activeSince],
             ["Occupation", subject.role],
           ]}
@@ -61,9 +42,17 @@ const TRANSCRIPTS = {
         {subject.bio.map((p) => (
           <p key={p}>{p}</p>
         ))}
+        <p>{subject.headline.join(" ")}</p>
       </>
     ),
   }),
+
+
+  polaroid: () => ({
+    title: subject.name,
+    body: <p>Polaroid of {subject.name} ({subject.alias}), pinned to the centre of the board.</p>,
+  }),
+
 
   sticky: (item) => ({
     title: "Sticky note",
@@ -130,40 +119,7 @@ const TRANSCRIPTS = {
     ),
   }),
 
-  indexcard: ({ props: { job } }) => ({
-    title: job.role,
-    body: (
-      <>
-        <p>
-          {job.company} · {job.period ?? "dates on request"}
-        </p>
-        <p>{job.summary}</p>
-        <ul>
-          {job.highlights.map((h) => (
-            <li key={h}>{h}</li>
-          ))}
-        </ul>
-        {job.url && (
-          <p>
-            <Link href={job.url}>{bare(job.url)}</Link>
-          </p>
-        )}
-      </>
-    ),
-  }),
 
-  contactcard: () => ({
-    title: contact.note,
-    body: (
-      <>
-        <p>
-          <Link href={`mailto:${contact.email}`}>{contact.email}</Link>
-        </p>
-        <Fields rows={socials.filter((s) => s.url).map((s) => [s.label, <Link key={s.id} href={s.url}>{s.handle}</Link>])} />
-        <p>Replies in {contact.timezone}.</p>
-      </>
-    ),
-  }),
 
   social: ({ props: { social } }) => ({
     title: social.label,

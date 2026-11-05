@@ -138,11 +138,12 @@ export function ageImage(ctx, x, y, w, h, r = Math.random, { fade = 0.12, warm =
   ctx.restore();
 }
 
-/** Small label + value pair in typewriter style (like a form field). */
+/** A printed form field: small label, typed value, rule underneath. */
 export function field(ctx, label, value, x, y, w, fonts, { valueSize = 22 } = {}) {
-  ctx.fillStyle = "rgba(40,36,30,0.55)";
-  ctx.font = font(fonts.display, 12, 500);
-  ctx.fillText(label.toUpperCase().split("").join(String.fromCharCode(8202)), x, y);
+  // a printed form label: small, sentence case, untracked
+  ctx.fillStyle = "rgba(40,36,30,0.6)";
+  ctx.font = font(fonts.type, 12);
+  ctx.fillText(label, x, y);
   ctx.fillStyle = INK.type;
   ctx.font = font(fonts.type, valueSize);
   ctx.fillText(value, x, y + valueSize + 4);

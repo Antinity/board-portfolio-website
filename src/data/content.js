@@ -8,7 +8,6 @@ export const subject = {
   name: "Lakshya Kumar",
   firstName: "Lakshya",
   alias: "Antinity",
-  age: 15,
   origin: "India",
   timezone: "IST (GMT+05:30)",
   activeSince: 2020,
@@ -172,32 +171,6 @@ export const operations = [
   },
 ];
 
-export const experience = [
-  {
-    id: "ghast",
-    role: "Frontend Developer",
-    company: "Ghast.io · Auraside",
-    period: null, // add dates, e.g. "2024 — 2025"
-    url: "https://ghast.io/",
-    summary: "Ghast is a Windows app that optimises your network connection. Worked on the frontend app, implementing features.",
-    highlights: [
-      "Preset system",
-      "Advanced configuration panel",
-      "Contextual hover tooltips for better UX",
-      "State management with Redux",
-    ],
-  },
-  {
-    id: "freelance",
-    role: "Freelance Web Developer",
-    company: "Independent",
-    period: "2020 — Now",
-    url: null,
-    summary: "Websites and platforms for communities, agencies and businesses — from landing pages to full-stack apps.",
-    highlights: ["Client sites in React, Next.js, PHP and vanilla JS", "Discord bots with discord.js"],
-  },
-];
-
 /** Client statements. `about` links each to a project / job on the board. */
 export const witnesses = [
   {
@@ -243,14 +216,15 @@ export const contact = {
 };
 
 /**
- * Socials. `icon` socials get a paper icon on the board; a null `url` is not
- * clickable yet. TODO: fill in Instagram, LinkedIn and WhatsApp.
+ * Socials. `icon` socials get a printed paper icon on the board that links
+ * straight to the profile; a null `url` is not clickable yet.
+ * TODO: fill in Instagram, LinkedIn and WhatsApp.
  */
 export const socials = [
   { id: "x", label: "X", handle: "@antinityfx", url: "https://x.com/antinityfx", icon: true },
   { id: "instagram", label: "Instagram", handle: "TODO", url: null, icon: true },
   { id: "linkedin", label: "LinkedIn", handle: "TODO", url: null, icon: true },
   { id: "whatsapp", label: "WhatsApp", handle: "TODO", url: null, icon: true },
-  { id: "github", label: "GitHub", handle: "Antinity", url: "https://github.com/antinity" },
+  { id: "github", label: "GitHub", handle: "Antinity", url: "https://github.com/antinity", icon: true },
   { id: "discord", label: "Discord", handle: "antinity", url: "https://discord.com/users/255322229062107136" },
 ];

@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { MathUtils, Plane, Raycaster, Vector3 } from "three";
 import { BOARD_H, BOARD_W, FRAME, OUTER_HALF_H, OUTER_HALF_W } from "../space";
 import { damp } from "../rig";
+import { loading } from "../loading";
 
 const MIN_DIST = 2.6; // closest zoom
 const ZOOM_OUT_MARGIN = 1.06; // furthest zoom: everything on the wall, with a little wall around it
@@ -57,14 +58,22 @@ export default function CameraRig({ rig }) {
     c.x = v.x = rig.home.x;
     c.y = v.y = rig.home.y;
     c.d = v.d = coverDist() * 0.45;
-    const t = setTimeout(() => {
-      v.x = 0;
-      v.y = 0;
-      v.d = farthest();
-      v.lambda = 1.3;
-      clampView(v);
-    }, 900);
-    return () => clearTimeout(t);
+    // the pull-back starts once the loader has finished
+    let t;
+    const unsubscribe = loading.subscribe(({ ready }) => {
+      if (!ready || t) return;
+      t = setTimeout(() => {
+        v.x = 0;
+        v.y = 0;
+        v.d = farthest();
+        v.lambda = 1.3;
+        clampView(v);
+      }, 450);
+    });
+    return () => {
+      unsubscribe();
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 

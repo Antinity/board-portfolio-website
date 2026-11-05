@@ -31,60 +31,6 @@ function toTexture(canvas, { repeat, srgb = true } = {}) {
   return t;
 }
 
-/**
- * Cork tile: warm brown base with thousands of granules (light + dark) and a
- * few pin holes. Returns a colour map and a matching bump map.
- */
-export function corkTextures(repeat) {
-  const S = 2048;
-  const color = makeCanvas(S, S);
-  const bump = makeCanvas(S, S);
-  const c = color.getContext("2d");
-  const b = bump.getContext("2d");
-  const r = rng(7);
-
-  c.fillStyle = "#9a6c42";
-  c.fillRect(0, 0, S, S);
-  b.fillStyle = "#808080";
-  b.fillRect(0, 0, S, S);
-
-  const tones = ["#7a5230", "#b07f50", "#c4925d", "#6a4526", "#a5764a", "#8d6039", "#d0a06a"];
-  for (let i = 0; i < 200000; i++) {
-    const x = r() * S;
-    const y = r() * S;
-    const rad = 0.8 + r() * r() * 4;
-    const tone = tones[(r() * tones.length) | 0];
-    c.globalAlpha = 0.35 + r() * 0.55;
-    c.fillStyle = tone;
-    c.beginPath();
-    c.ellipse(x, y, rad, rad * (0.6 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2);
-    c.fill();
-    const lum = tone === "#6a4526" || tone === "#7a5230" ? 60 : 170 + r() * 60;
-    b.globalAlpha = 0.5;
-    b.fillStyle = `rgb(${lum},${lum},${lum})`;
-    b.beginPath();
-    b.arc(x, y, rad, 0, Math.PI * 2);
-    b.fill();
-  }
-  // old pin holes
-  c.globalAlpha = 0.7;
-  b.globalAlpha = 1;
-  for (let i = 0; i < 80; i++) {
-    const x = r() * S;
-    const y = r() * S;
-    c.fillStyle = "#2e1d10";
-    c.beginPath();
-    c.arc(x, y, 1.4, 0, Math.PI * 2);
-    c.fill();
-    b.fillStyle = "#000";
-    b.beginPath();
-    b.arc(x, y, 1.6, 0, Math.PI * 2);
-    b.fill();
-  }
-  c.globalAlpha = b.globalAlpha = 1;
-  return { map: toTexture(color, { repeat }), bumpMap: toTexture(bump, { repeat, srgb: false }) };
-}
-
 /** Fine paper fibre, used as a shared bump map for every sheet of paper. */
 let paperBump = null;
 export function paperBumpTexture() {
@@ -197,15 +143,50 @@ export function torchCookie() {
   return t;
 }
 
+/** Deep navy with cloudy mottling, a faint sage grid and grain. */
+function navySurface(ctx, w, h, r) {
+  ctx.fillStyle = "#0f2340";
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 14; i++) {
+    const x = r() * w;
+    const y = r() * h;
+    const rad = (0.15 + r() * 0.35) * Math.max(w, h);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    const light = r() < 0.55;
+    g.addColorStop(0, light ? `rgba(120,140,160,${0.08 + r() * 0.1})` : `rgba(4,10,24,${0.15 + r() * 0.2})`);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+  ctx.strokeStyle = "rgba(185,220,155,0.06)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 22) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  for (let y = 0; y < h; y += 22) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i < (w * h) / 50; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${r() * 0.035})`;
+    ctx.fillRect(r() * w, r() * h, 1.2, 1.2);
+  }
+}
+
 /**
  * Frame stock in the prototype site's identity: deep navy with cloudy
  * mottling and a faint sage grid. Mapped across the whole frame face.
  */
-export function navyFrameTexture(drawSurface) {
+export function navyFrameTexture() {
   const W = 2048;
   const H = 1280;
   const cv = makeCanvas(W, H);
-  drawSurface(cv.getContext("2d"), W, H, rng(31));
+  navySurface(cv.getContext("2d"), W, H, rng(31));
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 16;
@@ -252,4 +233,79 @@ export function woodTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 16;
   return t;
+}
+
+/**
+ * Whiteboard surface: off-white melamine with the ghosts of old, badly
+ * erased marker strokes, a few specks, and grubbier edges. Returns a colour
+ * map spanning the board and a fine, tiled bump map.
+ */
+export function whiteboardTextures(bumpRepeat) {
+  const W = 2048;
+  const H = 1056;
+  const cv = makeCanvas(W, H);
+  const c = cv.getContext("2d");
+  const r = rng(53);
+  c.fillStyle = "#e6e7e3";
+  c.fillRect(0, 0, W, H);
+
+  // ghost strokes of erased marker
+  const inks = ["40,44,52", "40,70,140", "150,40,40", "30,90,60"];
+  for (let i = 0; i < 70; i++) {
+    const ink = inks[(r() * inks.length) | 0];
+    c.strokeStyle = `rgba(${ink},${0.025 + r() * 0.045})`;
+    c.lineWidth = 3 + r() * 9;
+    c.lineCap = "round";
+    let x = r() * W;
+    let y = r() * H;
+    c.beginPath();
+    c.moveTo(x, y);
+    const n = 3 + ((r() * 5) | 0);
+    for (let k = 0; k < n; k++) {
+      x += (r() - 0.5) * 260;
+      y += (r() - 0.5) * 120;
+      c.quadraticCurveTo(x + (r() - 0.5) * 80, y + (r() - 0.5) * 80, x, y);
+    }
+    c.stroke();
+  }
+  // eraser smears
+  for (let i = 0; i < 26; i++) {
+    const x = r() * W;
+    const y = r() * H;
+    const g = c.createRadialGradient(x, y, 0, x, y, 60 + r() * 160);
+    g.addColorStop(0, `rgba(90,92,96,${0.025 + r() * 0.03})`);
+    g.addColorStop(1, "rgba(90,92,96,0)");
+    c.fillStyle = g;
+    c.fillRect(x - 220, y - 220, 440, 440);
+  }
+  // specks
+  for (let i = 0; i < 2600; i++) {
+    c.fillStyle = `rgba(60,60,60,${r() * 0.12})`;
+    c.fillRect(r() * W, r() * H, 1 + r(), 1 + r());
+  }
+  // grubbier towards the frame
+  const edge = c.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.62);
+  edge.addColorStop(0, "rgba(80,76,70,0)");
+  edge.addColorStop(1, "rgba(80,76,70,0.12)");
+  c.fillStyle = edge;
+  c.fillRect(0, 0, W, H);
+
+  const map = new THREE.CanvasTexture(cv);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 16;
+
+  const B = 512;
+  const bcv = makeCanvas(B, B);
+  const b = bcv.getContext("2d");
+  b.fillStyle = "#808080";
+  b.fillRect(0, 0, B, B);
+  for (let i = 0; i < 16000; i++) {
+    const v = 110 + r() * 40;
+    b.fillStyle = `rgba(${v},${v},${v},0.5)`;
+    b.fillRect(r() * B, r() * B, 1.5, 1.5);
+  }
+  const bumpMap = new THREE.CanvasTexture(bcv);
+  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(...bumpRepeat);
+  return { map, bumpMap };
 }

@@ -3,31 +3,9 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { BOARD_H, BOARD_W, FRAME, PLANK } from "../space";
-import { corkTextures, navyFrameTexture, rng, woodTexture } from "../textures/procedural";
-import { brandSurface } from "../painters/identity";
+import { navyFrameTexture, whiteboardTextures, woodTexture } from "../textures/procedural";
 
 const DEPTH = 0.12; // how far the frame stands proud of the cork
-
-/** Large-scale tone variation baked into vertex colours (no extra texture). */
-function useCorkGeometryColors(segX, segY) {
-  return useMemo(() => {
-    const r = rng(21);
-    const blobs = Array.from({ length: 14 }, () => ({ x: r(), y: r(), s: 0.08 + r() * 0.2, v: (r() - 0.5) * 0.22 }));
-    const colors = [];
-    for (let j = 0; j <= segY; j++) {
-      for (let i = 0; i <= segX; i++) {
-        const u = i / segX;
-        const v = j / segY;
-        let k = 1;
-        for (const b of blobs) k += b.v * Math.exp(-((u - b.x) ** 2 + (v - b.y) ** 2) / (b.s * b.s));
-        // sun-faded centre, grubbier edges
-        k *= 1 - 0.12 * (Math.abs(u - 0.5) ** 2 + Math.abs(v - 0.5) ** 2) * 2;
-        colors.push(k, k * 0.98, k * 0.95);
-      }
-    }
-    return new Float32Array(colors);
-  }, [segX, segY]);
-}
 
 /** A screw: a shallow metal dome with a slot. */
 const screwHead = new THREE.CylinderGeometry(0.075, 0.085, 0.035, 18).rotateX(Math.PI / 2);
@@ -45,14 +23,13 @@ function Screw({ position, turn }) {
 }
 
 /**
- * Cork board in a navy frame (the prototype site's cloud-and-grid stock with
+ * Whiteboard in a navy frame (the prototype site's cloud-and-grid stock with
  * a sage inner edge), held to the wall by two wooden planks screwed over its
  * left and right edges.
  */
 export default function BoardSurface() {
-  const cork = useMemo(() => corkTextures([BOARD_W / 4, BOARD_H / 4]), []);
-  const colors = useCorkGeometryColors(48, 28);
-  const frameMap = useMemo(() => navyFrameTexture(brandSurface), []);
+  const surface = useMemo(() => whiteboardTextures([BOARD_W / 1.5, BOARD_H / 1.5]), []);
+  const frameMap = useMemo(() => navyFrameTexture(), []);
   const wood = useMemo(() => woodTexture(), []);
 
   const outerW = BOARD_W + FRAME * 2;
@@ -100,12 +77,10 @@ export default function BoardSurface() {
         <meshStandardMaterial color="#26231f" roughness={1} />
       </mesh>
 
-      {/* cork */}
+      {/* whiteboard: satin, not glossy */}
       <mesh receiveShadow>
-        <planeGeometry args={[BOARD_W, BOARD_H, 48, 28]}>
-          <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-        </planeGeometry>
-        <meshStandardMaterial map={cork.map} bumpMap={cork.bumpMap} bumpScale={1.2} roughness={0.95} vertexColors />
+        <planeGeometry args={[BOARD_W, BOARD_H]} />
+        <meshStandardMaterial map={surface.map} bumpMap={surface.bumpMap} bumpScale={0.25} roughness={0.62} />
       </mesh>
 
       {/* navy frame */}

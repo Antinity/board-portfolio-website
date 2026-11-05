@@ -3,9 +3,11 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { READABLE, SECTIONS } from "@/data/boardLayout";
-import { subject } from "@/data/content";
+import { contact, socials, subject } from "@/data/content";
 import { transcriptFor } from "@/reading/transcripts";
 import ReadingView from "@/reading/ReadingView";
+import Loader from "@/components/Loader";
+import Toast from "@/components/Toast";
 
 // WebGL only runs in the browser.
 const Experience = dynamic(() => import("@/three/Experience"), { ssr: false });
@@ -78,9 +80,25 @@ export default function InvestigationBoard() {
             </li>
           ))}
         </ul>
+        <ul>
+          <li>
+            <a href={`mailto:${contact.email}`}>Email {contact.email}</a>
+          </li>
+          {socials
+            .filter((s) => s.url)
+            .map((s) => (
+              <li key={s.id}>
+                <a href={s.url} target="_blank" rel="noopener noreferrer">
+                  {s.label}
+                </a>
+              </li>
+            ))}
+        </ul>
       </nav>
 
       <ReadingView item={reading} onClose={close} onPrev={prev} onNext={next} />
+      <Toast />
+      <Loader />
     </>
   );
 }

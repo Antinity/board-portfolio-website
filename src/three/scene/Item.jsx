@@ -3,22 +3,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { actionOf } from "@/data/boardLayout";
+import { contact } from "@/data/content";
 import { paintItem } from "../painters";
 import { seeded } from "../painters/common";
 import { paperBumpTexture } from "../textures/procedural";
 import { UNIT, itemZ, rectCenter } from "../space";
 import { damp } from "../rig";
+import { loading } from "../loading";
 import { Pin, Tape } from "./Fasteners";
 
 const READ_DIST = 1.6; // how far in front of the camera a page is held to read
-const HOVER_OPACITY = 0.08;
 const PICK_UP_SECONDS = 1.15;
 const PUT_BACK_SECONDS = 1.6;
-const READ_TILT = { x: 0.07, y: 0.1 }; // max paper tilt toward the pointer while reading (radians)
+const CIRCLE_IN_SECONDS = 0.22; // the red marker loop draws on hover…
+const CIRCLE_OUT_SECONDS = 0.18; // …and wipes away when the pointer leaves
+const READ_TILT = { x: 0.06, y: 0.08 }; // slight tilt toward the pointer while reading (radians)
 
 /**
- * Paper geometry that isn't perfectly flat: edges lift a little, one corner
- * curls, and sticky notes peel away from the board at the bottom.
+ * Paper geometry that isn't perfectly flat: edges lift a little and one
+ * corner curls.
  */
 function curledPlane(item) {
   const w = item.w * UNIT;
@@ -35,37 +39,29 @@ function curledPlane(item) {
     let z = flat ? 0 : 0.006 * (u * u + v * v);
     const d = Math.hypot(u - curlCorner[0], v - curlCorner[1]);
     z += curl * Math.max(0, 1 - d / 0.9) ** 2;
-    if (item.kind === "sticky") z += 0.05 * Math.max(0, (1 - v) / 2) ** 2.5; // peels up from the bottom
     pos.setZ(i, z);
   }
   geo.computeVertexNormals();
   return geo;
 }
 
-/** White highlight that follows the paper's own cut-out shape (alpha). */
-function overlayMaterial(map) {
-  return new THREE.ShaderMaterial({
-    uniforms: { map: { value: map }, opacity: { value: 0 } },
-    vertexShader: /* glsl */ `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform sampler2D map;
-      uniform float opacity;
-      varying vec2 vUv;
-      void main() {
-        if (texture2D(map, vUv).a < 0.5 || opacity < 0.001) discard;
-        gl_FragColor = vec4(1.0, 1.0, 1.0, opacity);
-      }`,
-    transparent: true,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-  });
+/** A loose, overshooting dry-erase loop around an item, in its local space. */
+function markerLoop(item) {
+  const r = seeded(`${item.id}-loop`);
+  const rx = (item.w * UNIT) / 2 + Math.min(0.32, item.w * UNIT * 0.14);
+  const ry = (item.h * UNIT) / 2 + Math.min(0.28, item.h * UNIT * 0.14);
+  const start = Math.PI * (0.85 + r() * 0.3);
+  const pts = [];
+  const steps = 26;
+  for (let i = 0; i <= steps; i++) {
+    const a = start - (i / steps) * Math.PI * 2 * 1.1; // a little past a full turn
+    const wobble = 1 + (r() - 0.5) * 0.045 + i * 0.0018;
+    pts.push(new THREE.Vector3(Math.cos(a) * rx * wobble, Math.sin(a) * ry * wobble, 0.07));
+  }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 200, 0.026, 5);
 }
+
+const markerInk = new THREE.MeshStandardMaterial({ color: "#b3161d", roughness: 0.7 });
 
 /** Local position on the item for fraction `at` ([fx, fy], top-left origin). */
 const local = (item, [fx, fy]) => [(fx - 0.5) * item.w * UNIT, (0.5 - fy) * item.h * UNIT];
@@ -79,11 +75,12 @@ const FASTENERS = {
 };
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
 const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
 const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
-const tiltEuler = new THREE.Euler();
-const tiltQuat = new THREE.Quaternion();
+const turnEuler = new THREE.Euler(0, 0, 0, "YXZ");
+const turnQuat = new THREE.Quaternion();
 
 /** Link region (board px, item-local) under a uv coordinate, if any. */
 function linkAt(item, links, uv) {
@@ -93,37 +90,49 @@ function linkAt(item, links, uv) {
   return links.find((l) => x >= l.x && x <= l.x + l.w && y >= l.y && y <= l.y + l.h) ?? null;
 }
 
+function openLink(href) {
+  window.open(href, href.startsWith("mailto:") ? "_self" : "_blank", "noopener");
+}
+
+async function copyEmail() {
+  try {
+    await navigator.clipboard.writeText(contact.email);
+    window.dispatchEvent(new CustomEvent("board:toast", { detail: "Email copied" }));
+  } catch {
+    window.dispatchEvent(new CustomEvent("board:toast", { detail: contact.email }));
+  }
+}
+
 /**
- * One piece of evidence: painted texture on a slightly curled sheet with
- * its pins / tape. Hover shows a faint white overlay; when `selected` the
- * sheet lifts off the board and is held up in front of the camera to read,
- * tilting gently toward the pointer. Links printed on the page (URLs,
- * email…) are clickable while it's being read.
+ * One piece of evidence: a painted sheet of matte paper with its pins or
+ * tape. Hovering draws a red marker loop around it. Clicking does the
+ * item's action: pick it up to read (it lifts off the board, faces the
+ * viewer and can be spun with a drag), open a link, or copy the email.
  *
  * @param {number[][]} occupied   pin spots already used by red strings
- * @param {{shift:number,height:number,width:number}} readLayout  reading pose,
- *        as fractions of the visible area (shift: horizontal offset)
+ * @param {{shift:number,height:number,width:number}} readLayout  reading pose
  */
 export default function Item({ item, occupied = [], rig, selected, onRead, readLayout }) {
   const [painted, setPainted] = useState(null);
   const geometry = useMemo(() => curledPlane(item), [item]);
+  const action = actionOf(item);
+  const loop = useMemo(() => (action === "none" ? null : markerLoop(item)), [item, action]);
   const bump = useMemo(() => paperBumpTexture(), []);
-  const overlay = useMemo(() => (painted ? overlayMaterial(painted.texture) : null), [painted]);
   const group = useRef(null);
   const fasteners = useRef(null);
   const pinsRef = useRef(null);
   const tapePeel = useRef(null);
   const material = useRef(null);
-  const state = useRef({ t: 0, hover: 0, hovered: false, tiltX: 0, tiltY: 0 });
-  const readable = item.readable !== false;
+  const state = useRef({ t: 0, hovered: false, circle: 0, tiltX: 0, tiltY: 0, yaw: 0, pitch: 0 });
 
   useEffect(() => {
     let alive = true;
     let texture;
     paintItem(item).then((res) => {
       texture = res.texture;
-      if (alive) setPainted(res);
-      else texture.dispose();
+      if (!alive) return texture.dispose();
+      setPainted(res);
+      loading.step(item.id);
     });
     return () => {
       alive = false;
@@ -132,7 +141,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   }, [item]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
-  useEffect(() => () => overlay?.dispose(), [overlay]);
+  useEffect(() => () => loop?.dispose(), [loop]);
 
   // Pose on the board.
   const board = useMemo(() => {
@@ -149,15 +158,22 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     const dt = Math.min(rawDt, 0.05);
     const s = state.current;
 
-    // hover overlay
-    const wantHover = s.hovered && !rig.reading ? HOVER_OPACITY : 0;
-    s.hover += (wantHover - s.hover) * damp(14, dt);
-    if (overlay) overlay.uniforms.opacity.value = s.hover;
+    // red marker loop: drawn quickly on hover, wiped from its start on leave
+    if (loop) {
+      const want = s.hovered && !rig.reading;
+      s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
+      const n = loop.index.count;
+      const p = easeOutCubic(s.circle);
+      if (want) loop.setDrawRange(0, Math.floor((p * n) / 6) * 6);
+      else {
+        const startAt = Math.floor(((1 - p) * n) / 6) * 6;
+        loop.setDrawRange(startAt, n - startAt);
+      }
+    }
 
-    // Taking a page off the board is a short sequence on one timeline:
-    // pins pull out and the tape peels up, then the page lifts and turns to
-    // face the viewer. Putting it back plays the same timeline in reverse,
-    // a little slower.
+    // Taking a page off the board is one timeline: pins pull out and the tape
+    // peels up, then the page lifts and turns to face the viewer. Putting it
+    // back plays it in reverse, a little slower.
     const target = selected ? 1 : 0;
     if (s.t === target && !selected) return;
     const rate = dt / (selected ? PICK_UP_SECONDS : PUT_BACK_SECONDS);
@@ -175,25 +191,29 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       .copy(camera.position)
       .addScaledVector(tmp.fwd, READ_DIST)
       .addScaledVector(tmp.right, readLayout.shift * visW);
-    // gentle tilt toward the pointer while held
-    const wantX = selected ? -rig.pointer.y * READ_TILT.x : 0;
-    const wantY = selected ? rig.pointer.x * READ_TILT.y : 0;
-    s.tiltX += (wantX - s.tiltX) * damp(5, dt);
-    s.tiltY += (wantY - s.tiltY) * damp(5, dt);
-    tiltQuat.setFromEuler(tiltEuler.set(s.tiltX, s.tiltY, 0));
-    tmp.quat.copy(camera.quaternion).multiply(TILT).multiply(tiltQuat);
+
+    // held page: drag to spin it all the way round, plus a slight tilt
+    // toward the pointer; it settles back to facing you when let go
+    const k = damp(8, dt);
+    s.yaw += ((selected ? rig.spin.yaw : 0) - s.yaw) * k;
+    s.pitch += ((selected ? rig.spin.pitch : 0) - s.pitch) * k;
+    s.tiltX += ((selected ? -rig.pointer.y * READ_TILT.x : 0) - s.tiltX) * damp(5, dt);
+    s.tiltY += ((selected ? rig.pointer.x * READ_TILT.y : 0) - s.tiltY) * damp(5, dt);
+    turnQuat.setFromEuler(turnEuler.set(s.pitch + s.tiltX, s.yaw + s.tiltY, 0));
+    tmp.quat.copy(camera.quaternion).multiply(TILT).multiply(turnQuat);
 
     g.position.lerpVectors(board.pos, tmp.pos, e);
     g.position.z += Math.sin(e * Math.PI) * 0.45; // arc toward the viewer
     g.quaternion.slerpQuaternions(board.quat, tmp.quat, e);
     g.scale.setScalar(THREE.MathUtils.lerp(1, scale, e));
+
     if (pinsRef.current) {
       pinsRef.current.position.z = release * 0.22; // pulled out
       pinsRef.current.visible = release < 0.98;
     }
-    if (tapePeel.current) tapePeel.current.rotation.x = release * 1.25; // peeled up off the cork
+    if (tapePeel.current) tapePeel.current.rotation.x = release * 1.25; // peeled up off the board
     if (fasteners.current) fasteners.current.visible = e < 0.35;
-    if (material.current) material.current.emissiveIntensity = e * 0.72; // readable even in the dark
+    if (material.current) material.current.emissiveIntensity = e * 0.5; // readable even in the dark
 
     if (selected || s.t > 0.001) {
       rig.readT = e;
@@ -209,34 +229,38 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   );
   const r = seeded(`${item.id}-pins`);
 
-  const handlers = readable
-    ? {
-        onPointerOver: (e) => {
-          e.stopPropagation();
-          if (!rig.reading) state.current.hovered = true;
-        },
-        onPointerOut: () => {
-          state.current.hovered = false;
-          if (selected) document.body.style.cursor = "";
-        },
-        onPointerMove: (e) => {
-          if (!selected) return;
-          e.stopPropagation();
-          document.body.style.cursor = linkAt(item, painted.links, e.uv) ? "pointer" : "";
-        },
-        onClick: (e) => {
-          e.stopPropagation();
-          if (selected) {
-            const link = linkAt(item, painted.links, e.uv);
-            if (link) window.open(link.href, link.href.startsWith("mailto:") ? "_self" : "_blank", "noopener");
-            return;
-          }
-          if (rig.dragging || rig.reading) return;
-          state.current.hovered = false;
-          onRead(item.id);
-        },
-      }
-    : {};
+  const handlers =
+    action === "none"
+      ? {}
+      : {
+          onPointerOver: (e) => {
+            e.stopPropagation();
+            if (!rig.reading) state.current.hovered = true;
+          },
+          onPointerOut: () => {
+            state.current.hovered = false;
+            if (selected) document.body.style.cursor = "";
+          },
+          onPointerMove: (e) => {
+            if (!selected) return;
+            e.stopPropagation();
+            document.body.style.cursor = linkAt(item, painted.links, e.uv) ? "pointer" : "";
+          },
+          onClick: (e) => {
+            e.stopPropagation();
+            if (selected) {
+              if (rig.dragging) return;
+              const link = linkAt(item, painted.links, e.uv);
+              if (link) openLink(link.href);
+              return;
+            }
+            if (rig.dragging || rig.reading) return;
+            if (action === "link") return openLink(item.props.social.url);
+            if (action === "copy") return copyEmail();
+            state.current.hovered = false;
+            onRead(item.id);
+          },
+        };
 
   return (
     <group ref={group} position={board.pos} quaternion={board.quat}>
@@ -248,13 +272,19 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           emissive="#ffffff"
           emissiveIntensity={0}
           bumpMap={bump}
-          bumpScale={painted.glossy ? 0.15 : 0.5}
-          roughness={painted.glossy ? 0.32 : 0.88}
+          bumpScale={0.9}
+          roughness={0.96}
           alphaTest={painted.alpha ? 0.5 : 0}
-          side={THREE.DoubleSide}
+          side={painted.alpha ? THREE.DoubleSide : THREE.FrontSide}
         />
       </mesh>
-      {overlay && <mesh geometry={geometry} material={overlay} renderOrder={2} />}
+      {/* the blank back of the sheet, seen when a held page is spun round */}
+      {!painted.alpha && (
+        <mesh geometry={geometry} receiveShadow>
+          <meshStandardMaterial color="#e3e0d8" bumpMap={bump} bumpScale={0.9} roughness={0.97} side={THREE.BackSide} />
+        </mesh>
+      )}
+      {loop && <mesh geometry={loop} material={markerInk} />}
       <group ref={fasteners}>
         <group ref={pinsRef}>
           {pins.map((at) => (

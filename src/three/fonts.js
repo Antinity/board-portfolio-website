@@ -1,3 +1,5 @@
+import { loading } from "./loading";
+
 /**
  * Canvas text needs real font-family names. next/font exposes them through
  * CSS variables on <html>; this resolves them and waits until they're loaded.
@@ -8,7 +10,6 @@ const VARS = {
   marker: "--font-marker",
   hand: "--font-hand",
   display: "--font-display",
-  brand: "--font-brand",
 };
 
 let ready = null;
@@ -27,6 +28,9 @@ export function loadFonts() {
     ])
   )
     .catch(() => {})
-    .then(() => fonts);
+    .then(() => {
+      loading.step("fonts");
+      return fonts;
+    });
   return ready;
 }

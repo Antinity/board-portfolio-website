@@ -1,47 +1,61 @@
 import { subject } from "@/data/content";
 import { todoLineY } from "@/data/boardLayout";
-import { INK, bareUrl, coffeeRing, field, font, linkText, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
+import { INK, coffeeRing, field, font, linkText, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
 
 /* Typed and handwritten paper documents. */
 
-export const dossier = {
-  /** Landscape fact sheet under the poster: the record, typed. */
+/**
+ * "Profile of the suspect": the about page, as a typed police profile form
+ * with an investigator's marker note at the foot.
+ */
+export const profile = {
   paint(ctx, { w, h }, { fonts, r }) {
-    paperBase(ctx, w, h, { color: "#efe9da", r });
-    coffeeRing(ctx, w * 0.9, h * 0.72, 34, r);
-    const pad = 28;
+    paperBase(ctx, w, h, { color: "#eeebe3", r, shade: 0.14 });
+    coffeeRing(ctx, w * 0.82, h * 0.9, 38, r);
+    const pad = 34;
+    const inner = w - pad * 2;
 
     ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.display, 24, 700);
-    ctx.fillText("SUBJECT FILE", pad, 46);
-    ctx.font = font(fonts.type, 13);
-    ctx.fillText(`REF. ${subject.alias.toUpperCase()}-${subject.activeSince}`, pad + 170, 45);
-    ctx.fillRect(pad, 58, w - pad * 2, 2);
+    ctx.font = font(fonts.display, 34, 600);
+    ctx.fillText("Profile of the suspect", pad, 64);
+    ctx.fillRect(pad, 80, inner, 2.5);
+    ctx.fillRect(pad, 86, inner, 1);
 
-    const cols = 3;
-    const cw = (w - pad * 2 - (cols - 1) * 26) / cols;
-    const rows = [
-      ["Name", subject.name],
-      ["Alias", subject.alias],
-      ["Age", String(subject.age)],
-      ["Origin", subject.origin],
-      ["Timezone", "IST +5:30"],
-      ["Active since", String(subject.activeSince)],
-    ];
-    rows.forEach(([k, v], i) => {
-      const x = pad + (i % cols) * (cw + 26);
-      const y = 84 + Math.floor(i / cols) * 58;
-      field(ctx, k, v, x, y, cw, fonts, { valueSize: 19 });
-    });
-    field(ctx, "Occupation", subject.role, pad, 84 + 2 * 58, w - pad * 2 - 160, fonts, { valueSize: 19 });
+    const half = (inner - 24) / 2;
+    let y = 118;
+    field(ctx, "Name", subject.name, pad, y, half, fonts, { valueSize: 20 });
+    y = field(ctx, "Known as", subject.alias, pad + half + 24, y, half, fonts, { valueSize: 20 });
+    field(ctx, "Origin", subject.origin, pad, y, half, fonts, { valueSize: 20 });
+    y = field(ctx, "Active since", String(subject.activeSince), pad + half + 24, y, half, fonts, { valueSize: 20 });
+    y = field(ctx, "Occupation", subject.role, pad, y, inner, fonts, { valueSize: 20 });
 
-    stamp(ctx, "CLASSIFIED", w - 112, 40, { f: fonts.display, size: 20, rot: 0.12, r });
+    const section = (label, text, maxLines) => {
+      y += 10;
+      ctx.fillStyle = "rgba(40,36,30,0.6)";
+      ctx.font = font(fonts.type, 12);
+      ctx.fillText(label, pad, y);
+      ctx.fillStyle = INK.type;
+      ctx.font = font(fonts.type, 14.5);
+      y = wrapText(ctx, text, pad, y + 22, inner, 20, { maxLines }) + 4;
+    };
+    section("Description", `${subject.bio[0]} ${subject.bio[1]}`, 9);
+    section("Known habits", subject.bio[2], 5);
+
+    // investigator's note in red marker
+    ctx.fillStyle = INK.red;
+    ctx.font = font(fonts.marker, 21);
+    const quote = `“${subject.headline.join(" ")}”`;
+    const noteY = Math.min(y + 34, h - 46);
+    wrapText(ctx, quote, pad, noteY, inner - 40, 26, { maxLines: 2 });
+    ctx.strokeStyle = INK.red;
+    ctx.lineWidth = 2;
+    scribbleLine(ctx, pad, noteY + 34, pad + inner * 0.62, noteY + 31, r, 2.5);
   },
 };
 
 export const todo = {
   paint(ctx, { w, h, props }, { fonts, r }) {
-    paperBase(ctx, w, h, { color: "#f4f1e8", r, shade: 0.08 });
+    paperBase(ctx, w, h, { color: "#f0eee6", r, shade: 0.12 });
     // ruled lines + margin
     ctx.strokeStyle = "rgba(70,110,180,0.25)";
     ctx.lineWidth = 1.2;
@@ -60,10 +74,7 @@ export const todo = {
 
     ctx.fillStyle = INK.black;
     ctx.font = font(fonts.marker, 44);
-    ctx.fillText("TO DO", w * 0.17, h * 0.14);
-    ctx.font = font(fonts.hand, 22);
-    ctx.fillStyle = INK.pencil;
-    ctx.fillText("shipped ✓   /   building", w * 0.52, h * 0.13);
+    ctx.fillText("To do", w * 0.17, h * 0.14);
 
     const links = [];
     props.items.forEach((op, i) => {
@@ -96,40 +107,32 @@ export const todo = {
 export const crew = {
   paint(ctx, { w, h, props }, { fonts, r }) {
     const { witness } = props;
-    paperBase(ctx, w, h, { color: "#f1eee6", r, shade: 0.08 });
+    paperBase(ctx, w, h, { color: "#eeebe4", r, shade: 0.12 });
     const pad = 20;
+    const size = w < 280 ? 15 : 17;
 
-    // header like an ID sheet
     ctx.fillStyle = INK.black;
-    ctx.beginPath();
-    ctx.arc(pad + 15, pad + 15, 15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#f1eee6";
-    ctx.font = font(fonts.display, 13, 700);
-    ctx.textAlign = "center";
-    ctx.fillText(witness.name[0], pad + 15, pad + 20);
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.display, 12, 600);
-    ctx.fillText("WITNESS STATEMENT", pad + 38, pad + 20);
+    ctx.font = font(fonts.display, 17, 600);
+    ctx.fillText("Witness statement", pad, pad + 20);
+    ctx.fillRect(pad, pad + 30, w - pad * 2, 1.5);
 
     const photoW = 84;
     const photoX = w - pad - photoW;
-    silhouette(ctx, photoX, pad + 44, photoW, 100);
+    silhouette(ctx, photoX, pad + 46, photoW, 100);
     ctx.fillStyle = "rgba(30,30,30,0.55)";
-    ctx.font = font(fonts.type, 8);
-    ctx.fillText("NO PHOTO ON FILE", photoX + 2, pad + 156);
+    ctx.font = font(fonts.type, 9);
+    ctx.fillText("No photo on file", photoX, pad + 160);
 
-    let y = pad + 56;
+    let y = pad + 60;
     const fw = photoX - pad - 14;
-    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
-    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
-    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
+    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: size });
+    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: size });
+    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: size });
 
     y += 6;
-    ctx.fillStyle = "rgba(40,36,30,0.55)";
-    ctx.font = font(fonts.display, 11, 500);
-    ctx.fillText("STATEMENT", pad, y);
+    ctx.fillStyle = "rgba(40,36,30,0.6)";
+    ctx.font = font(fonts.type, 12);
+    ctx.fillText("Statement", pad, y);
     ctx.fillStyle = INK.type;
     ctx.font = font(fonts.type, 12.5);
     const lineH = 16;
@@ -137,48 +140,5 @@ export const crew = {
     wrapText(ctx, `"${witness.statement}"`, pad, y + 18, w - pad * 2, lineH, { maxLines });
 
     stamp(ctx, "RECOMMENDS", w / 2, h - 28, { f: fonts.display, size: 17, rot: -0.06, color: INK.blue, r });
-  },
-};
-
-export const indexcard = {
-  paint(ctx, { w, h, props }, { fonts, r }) {
-    const { job } = props;
-    paperBase(ctx, w, h, { color: "#fbf9f2", r, shade: 0.06 });
-    ctx.strokeStyle = "rgba(80,120,190,0.35)";
-    ctx.lineWidth = 1;
-    for (let y = 92; y < h; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(200,50,50,0.6)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 62);
-    ctx.lineTo(w, 62);
-    ctx.stroke();
-
-    ctx.fillStyle = INK.red;
-    ctx.font = font(fonts.marker, 26);
-    ctx.fillText(job.role, 22, 46);
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 17);
-    ctx.textAlign = "right";
-    ctx.fillText(job.period ?? "dates —", w - 22, 44);
-    ctx.textAlign = "left";
-
-    ctx.font = font(fonts.type, 19);
-    ctx.fillText(job.company, 22, 86);
-    ctx.fillStyle = INK.blue;
-    ctx.font = font(fonts.hand, 26, 500);
-    job.highlights.slice(0, Math.floor((h - 130) / 30)).forEach((line, i) => ctx.fillText(`– ${line}`, 30, 116 + i * 30));
-    if (!job.url) return [];
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 14);
-    ctx.textAlign = "right";
-    const link = linkText(ctx, bareUrl(job.url), w - 22, h - 16, job.url);
-    ctx.textAlign = "left";
-    return [link];
   },
 };

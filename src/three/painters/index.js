@@ -2,20 +2,19 @@ import * as THREE from "three";
 import { loadFonts } from "../fonts";
 import { makeCanvas } from "../textures/procedural";
 import { seeded } from "./common";
-import { crew, dossier, indexcard, todo } from "./documents";
+import { crew, profile, todo } from "./documents";
 import { polaroid, print } from "./photos";
 import { label, sticky, tag } from "./props";
-import { contactcard, poster, social } from "./identity";
+import { emailslip, social } from "./contact";
 
 /**
- * Painter registry. A painter is `{ paint(ctx, item, env), images?, glossy?, alpha? }`:
+ * Painter registry. A painter is `{ paint(ctx, item, env), images?, alpha? }`:
  *  - paint:  draws the item in board-pixel units; may return clickable link
  *            regions `[{ x, y, w, h, href }]` (board px, item-local)
  *  - images: URLs it needs, preloaded into env.images
- *  - glossy: photo paper (lower roughness)
  *  - alpha:  has transparent cut-outs
  */
-export const PAINTERS = { contactcard, crew, dossier, indexcard, label, polaroid, poster, print, social, sticky, tag, todo };
+export const PAINTERS = { crew, emailslip, label, polaroid, print, profile, social, sticky, tag, todo };
 
 /** Texture pixels per board pixel (capped so nothing exceeds 2048px). */
 const DENSITY = 3;
@@ -38,8 +37,19 @@ function loadImage(src) {
   return imageCache.get(src);
 }
 
-/** Paint an item to a CanvasTexture. */
-export async function paintItem(item) {
+// Paint one item per animation frame, so the loader keeps moving smoothly
+// instead of freezing while every texture is drawn in one long task.
+let queue = Promise.resolve();
+const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+/** Paint an item to a CanvasTexture (queued: one per frame). */
+export function paintItem(item) {
+  const job = queue.then(nextFrame).then(() => paintNow(item));
+  queue = job.catch(() => {});
+  return job;
+}
+
+async function paintNow(item) {
   const painter = PAINTERS[item.kind];
   if (!painter) throw new Error(`No painter for kind "${item.kind}"`);
   const fonts = await loadFonts();
@@ -56,5 +66,5 @@ export async function paintItem(item) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 16; // clamped to the GPU's maximum by three.js
-  return { texture, links, glossy: Boolean(painter.glossy), alpha: Boolean(painter.alpha) };
+  return { texture, links, alpha: Boolean(painter.alpha) };
 }

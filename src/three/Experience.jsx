@@ -14,10 +14,13 @@ import CameraRig from "./scene/CameraRig";
 import ReadingBackdrop from "./scene/ReadingBackdrop";
 import PostFX from "./scene/PostFX";
 import Moonlight from "./scene/Moonlight";
+import Lamp from "./scene/Lamp";
+import ReadingSpin from "./scene/ReadingSpin";
+import LoadingGate from "./scene/LoadingGate";
 
 /**
- * The 3D board: cork + frame, every item, red strings, torch, moonlight,
- * camera and post-processing.
+ * The 3D board: whiteboard + frame, every item, red strings, the torch,
+ * moonlight and the frame lamp, camera and post-processing.
  *
  * @param {string|null} readingId   item currently held up to read
  * @param {(id: string) => void} onRead
@@ -49,7 +52,9 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
     >
       <color attach="background" args={["#050505"]} />
+      <LoadingGate steps={ITEMS.length + 1} />
       <Moonlight rig={rig} />
+      <Lamp rig={rig} />
 
       <BoardSurface />
       {ITEMS.map((item) => (
@@ -65,6 +70,7 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       ))}
       <RedStrings />
       <ReadingBackdrop rig={rig} readingId={readingId} onClose={onClose} />
+      <ReadingSpin rig={rig} readingId={readingId} />
 
       <Flashlight rig={rig} on={torchOn} />
       <CameraRig rig={rig} />

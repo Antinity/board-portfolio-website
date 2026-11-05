@@ -27,6 +27,8 @@ export function createRig(home = new Vector3()) {
     readT: 0,
     /** world position of the page being read (depth-of-field focus) */
     readPoint: new Vector3(),
+    /** how far the held page has been spun by dragging (radians) */
+    spin: { yaw: 0, pitch: 0 },
   };
 }
 

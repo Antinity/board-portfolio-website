@@ -1,0 +1,52 @@
+/* Hallmark · v2.0.0 · redesign: full (board content) · genre: atmospheric · theme: pinned by the user · part of the board shell; tokens live in app/globals.css */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  align-content: end;
+  padding: clamp(24px, 5vw, 64px);
+  background: var(--room);
+  color: var(--paper);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.loader[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.caption {
+  align-self: end;
+  font-family: var(--face-body);
+  font-size: 16px;
+  color: var(--paper-soft);
+}
+
+.number {
+  margin-top: 4px;
+  font-family: var(--face-body);
+  font-size: clamp(72px, 13vw, 168px);
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  margin-top: clamp(16px, 2vw, 28px);
+  height: 1px;
+  background: var(--paper-line);
+}
+
+.bar {
+  height: 100%;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader {
+    transition: none;
+  }
+}

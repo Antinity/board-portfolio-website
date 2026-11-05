@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Object3D, Vector3 } from "three";
 import { torchCookie } from "../textures/procedural";
+import { loading } from "../loading";
 
 /** Tunables for the feel of the torch. */
 const TORCH = {
   color: "#d4e4ff", // cool LED white-blue
-  intensity: 2.6, // overall brightness
+  intensity: 1.55, // overall brightness (the board is white, so it needs less)
   radius: 12.2, // cone radius on the board, world units (bright disc ≈ 46% of it, faint spill beyond) — constant at every zoom
   minThrow: 20, // the torch is never closer to the board than this (keeps the cone narrow)
   hold: new Vector3(0.35, -0.5, 0), // offset from the eye, world units
@@ -49,9 +50,15 @@ export default function Flashlight({ rig, on = true }) {
 
   useEffect(() => {
     reduceMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    state.current.bootAt = performance.now() + 900; // torch clicks on shortly after load
     if (light.current) light.current.target = target;
-    return () => cookie.dispose();
+    // the torch clicks on just after the loader clears
+    const unsubscribe = loading.subscribe(({ ready }) => {
+      if (ready && state.current.bootAt === Infinity) state.current.bootAt = performance.now() + 250;
+    });
+    return () => {
+      unsubscribe();
+      cookie.dispose();
+    };
   }, [cookie, target]);
 
   useFrame(({ clock }, rawDt) => {

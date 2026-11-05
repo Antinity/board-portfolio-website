@@ -96,13 +96,10 @@ export const tag = {
     ctx.globalCompositeOperation = "source-over";
 
     const { group } = props;
-    ctx.fillStyle = INK.red;
-    ctx.font = font(fonts.display, 12, 600);
-    ctx.fillText("EVIDENCE", 54, 26);
     ctx.fillStyle = INK.black;
     ctx.font = font(fonts.marker, 24);
-    ctx.fillText(group.group, 54, 54);
+    ctx.fillText(group.group, 54, 42);
     ctx.font = font(fonts.hand, 22, 500);
-    group.items.forEach((item, i) => ctx.fillText(item, 54, 84 + i * 20));
+    group.items.forEach((item, i) => ctx.fillText(item, 54, 74 + i * 20));
   },
 };

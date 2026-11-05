@@ -32,7 +32,7 @@ export default function Moonlight({ rig }) {
       <directionalLight
         ref={light}
         color="#9fb4e8"
-        intensity={0.55}
+        intensity={0.4}
         position={[-14, 12, 16]}
         castShadow
         shadow-mapSize={[2048, 2048]}

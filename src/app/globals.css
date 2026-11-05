@@ -1,32 +1,46 @@
+/* Hallmark · v2.0.0 · redesign: full (board content) · genre: atmospheric · theme: pinned by the user (white whiteboard, harsh matte paper, red dry-erase marker, a torch and a dim frame lamp) · job: hire or contact Lakshya · signature: the red marker loop drawn around whatever the torch finds · surface: the board is WebGL; this sheet styles the loader and the copy toast */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: P, the board still opens on a slow pull-back; kept because it lands on the subject first */
 @import "tailwindcss";
 
 :root {
-  --ink-red: #b3262e;
-  --ink-blue: #1f4fa8;
-  --hud: #ece6d6;
-  --hud-accent: #e0484f;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* palette */
+  --room: #050505;
+  --paper: #ece8df;
+  --paper-soft: #a8a59d;
+  --paper-line: #2a2926;
+  --ink: #1c1a17;
+  --marker-red: #b3161d;
+  --shadow: #00000066;
 
-  /* Procedural textures (SVG fractal noise) */
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 1.2 0 0 0 -.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --cork-specks-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .22 0 0 0 0 .12 0 0 0 0 .05 2.6 0 0 0 -1.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --cork-specks-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.38' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .86 0 0 0 0 .68 0 0 0 0 .46 0 2.4 0 0 -1.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* faces (resolved from next/font in layout.js) */
+  --face-body: var(--font-type), ui-monospace, monospace;
+  --face-display: var(--font-display), system-ui, sans-serif;
 }
 
 html,
 body {
   height: 100%;
-  overflow: hidden;
+  overflow: clip;
   overscroll-behavior: none;
 }
 
 body {
-  background: #0b0a09;
-  color: var(--hud);
-  font-family: var(--font-display), system-ui, sans-serif;
+  background: var(--room);
+  color: var(--paper);
+  font-family: var(--face-display);
   -webkit-font-smoothing: antialiased;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--marker-red);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--marker-red);
+  outline-offset: 2px;
 }
 
 img {

@@ -5,30 +5,29 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { makeCanvas, rng } from "../textures/procedural";
 
-/* Push pins and masking tape. Geometry/materials are shared across instances. */
+/* Magnets and masking tape. Geometry/materials are shared across instances. */
 
 const PIN_COLORS = ["#c3242c", "#2557c4", "#2c9a4a", "#e0b52a", "#e8e5dc", "#1d1d1f"];
 
-/** Neck + head + domed cap, merged into one geometry (one draw call per pin). */
-const pinGeometry = (() => {
-  const neck = new THREE.CylinderGeometry(0.022, 0.03, 0.05, 12).rotateX(Math.PI / 2).translate(0, 0, 0.025);
-  const head = new THREE.CylinderGeometry(0.055, 0.07, 0.05, 20).rotateX(Math.PI / 2).translate(0, 0, 0.07);
-  const cap = new THREE.SphereGeometry(0.058, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0, 0.095);
-  return mergeGeometries([neck.toNonIndexed(), head.toNonIndexed(), cap.toNonIndexed()]);
+/** A round whiteboard magnet: a short disc with a softly rounded top. */
+const magnetGeometry = (() => {
+  const body = new THREE.CylinderGeometry(0.085, 0.09, 0.05, 28).rotateX(Math.PI / 2).translate(0, 0, 0.025);
+  const top = new THREE.SphereGeometry(0.085, 28, 8, 0, Math.PI * 2, 0, Math.PI * 0.18).rotateX(Math.PI / 2).translate(0, 0, 0.05 - 0.085 * Math.cos(Math.PI * 0.18));
+  return mergeGeometries([body.toNonIndexed(), top.toNonIndexed()]);
 })();
 
-const pinMaterials = new Map();
-function pinMaterial(color) {
-  if (!pinMaterials.has(color)) {
-    pinMaterials.set(color, new THREE.MeshPhysicalMaterial({ color, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.2 }));
+const magnetMaterials = new Map();
+function magnetMaterial(color) {
+  if (!magnetMaterials.has(color)) {
+    magnetMaterials.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.62 }));
   }
-  return pinMaterials.get(color);
+  return magnetMaterials.get(color);
 }
 
-/** Push pin standing on a surface at world `position` ([x, y, z of surface]). */
+/** A magnet holding paper at world `position` ([x, y, z of surface]). */
 export function Pin({ position, color = 0 }) {
-  const mat = pinMaterial(typeof color === "number" ? PIN_COLORS[color % PIN_COLORS.length] : color);
-  return <mesh geometry={pinGeometry} material={mat} position={position} castShadow />;
+  const mat = magnetMaterial(typeof color === "number" ? PIN_COLORS[color % PIN_COLORS.length] : color);
+  return <mesh geometry={magnetGeometry} material={mat} position={position} castShadow />;
 }
 
 let tapeTexture = null;

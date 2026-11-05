@@ -1,0 +1,35 @@
+/* Hallmark · v2.0.0 · redesign: full (board content) · genre: atmospheric · theme: pinned by the user · part of the board shell; tokens live in app/globals.css */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(24px, 6vh, 56px);
+  z-index: 40;
+  padding: 12px 20px;
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--face-body);
+  font-size: 16px;
+  box-shadow: 0 6px 18px var(--shadow);
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.toast[data-shown] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.toast:empty {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+  }
+}
