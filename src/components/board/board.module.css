@@ -1,0 +1,187 @@
+/* ---------- Camera ---------- */
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  background: radial-gradient(ellipse at 50% 45%, #1d1a17, #0b0a09 75%), #0b0a09;
+}
+
+.viewport[data-dragging] {
+  cursor: grabbing;
+}
+
+.viewport[data-dragging] [data-cluster] {
+  pointer-events: none;
+}
+
+.world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ---------- Board surface ---------- */
+
+.frame {
+  position: absolute;
+  inset: calc(var(--frame) * -1);
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.25), transparent 6%, transparent 94%, rgb(0 0 0 / 0.3)),
+    repeating-linear-gradient(178deg, rgb(255 220 170 / 0.05) 0 3px, transparent 3px 9px, rgb(0 0 0 / 0.08) 9px 11px),
+    repeating-linear-gradient(91deg, transparent 0 40px, rgb(0 0 0 / 0.08) 40px 43px, transparent 43px 120px),
+    linear-gradient(180deg, #6b4428, #4a2d19 50%, #5a3820);
+  box-shadow:
+    0 40px 80px rgb(0 0 0 / 0.7),
+    0 10px 24px rgb(0 0 0 / 0.6),
+    inset 0 2px 1px rgb(255 220 180 / 0.25),
+    inset 0 -3px 2px rgb(0 0 0 / 0.5);
+}
+
+.cork {
+  position: absolute;
+  inset: 0;
+  background:
+    var(--cork-specks-dark),
+    var(--cork-specks-light),
+    radial-gradient(ellipse at 20% 30%, rgb(255 210 150 / 0.12), transparent 40%),
+    radial-gradient(ellipse at 75% 70%, rgb(60 30 10 / 0.18), transparent 45%),
+    linear-gradient(160deg, #b5865a, #a3734a 50%, #93653f);
+  background-size: 260px 260px, 340px 340px, 100% 100%, 100% 100%, 100% 100%;
+  box-shadow:
+    inset 0 0 0 3px rgb(30 15 5 / 0.6),
+    inset 0 10px 30px rgb(0 0 0 / 0.55),
+    inset 0 0 80px rgb(0 0 0 / 0.35);
+}
+
+/* ---------- Clusters ---------- */
+
+.cluster {
+  position: absolute;
+  cursor: pointer;
+  outline: none;
+  z-index: 1;
+}
+
+.cluster:hover,
+.cluster:focus-visible,
+.cluster[data-active] {
+  z-index: 2;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  top: -14px;
+  z-index: 6;
+  transform: rotate(-1.5deg);
+  transition: transform 0.35s var(--ease-out);
+}
+
+.cluster:hover .label,
+.cluster:focus-visible .label {
+  transform: rotate(-1.5deg) translateY(-4px);
+}
+
+.marker {
+  position: absolute;
+  left: -50px;
+  top: -40px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+  fill: none;
+  stroke: rgb(200 25 30 / 0.85);
+  stroke-width: 7px;
+  stroke-linecap: round;
+}
+
+.marker path {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.8s var(--ease-out);
+}
+
+.cluster:hover .marker path,
+.cluster:focus-visible .marker path,
+.cluster[data-active] .marker path {
+  stroke-dashoffset: 0;
+}
+
+/* ---------- Case card ---------- */
+
+.caseCard {
+  position: absolute;
+  z-index: 1;
+  transform: rotate(-1deg);
+  filter: drop-shadow(3px 10px 10px rgb(0 0 0 / 0.5));
+  text-align: center;
+}
+
+.caseNo {
+  font-size: 15px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.caseName {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.caseTitle {
+  margin-top: 10px;
+  font-family: var(--font-hand);
+  font-size: 34px;
+  color: var(--ink-red);
+}
+
+.caseStamp {
+  position: absolute;
+  right: 26px;
+  bottom: 22px;
+}
+
+/* ---------- Strings ---------- */
+
+.strings {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.strings svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.string,
+.stringShadow {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.string {
+  stroke: #b0161f;
+  stroke-width: 3.5;
+}
+
+.stringShadow {
+  stroke: rgb(0 0 0 / 0.35);
+  stroke-width: 4;
+  transform: translate(4px, 8px);
+  filter: blur(2px);
+}

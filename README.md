@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Investigation Board Portfolio
 
-## Getting Started
-
-First, run the development server:
+A portfolio presented as a detective's evidence board: drag to explore, scroll / pinch to zoom,
+click a cluster of evidence to fly to it and open its case file. A hand-held flashlight lights the
+room (press **F** to toggle room lights; **1–7** jump to exhibits; **Esc** closes; **← / →** move
+between files).
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Where to edit
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| What                          | File                                    |
+| ----------------------------- | --------------------------------------- |
+| All your info (placeholders)  | `src/data/content.js`                   |
+| Section positions on board    | `src/data/boardLayout.js`               |
+| How a section looks / expands | `src/sections/<section>.jsx`            |
+| Flashlight feel (tunables)    | `CONFIG` in `src/components/flashlight/Flashlight.jsx` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Images: set any `image` field in `content.js` to a path in `/public`; otherwise a generated
+placeholder photo is shown.
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  data/            content + board geometry (no UI)
+  sections/        one module per exhibit: <Evidence> (on the board) + <File> (expanded view)
+  components/
+    evidence/      reusable board primitives: BoardItem, Pin, Tape, Polaroid, StickyNote,
+                   Paper, IndexCard, Clipping, Blueprint, Stamp, Snapshot...
+    board/         Board (camera + surface), Cluster, CaseCard, RedStrings
+    case-file/     sliding manila-folder panel + FileParts (blocks for expanded content)
+    flashlight/    canvas darkness + beam, film grain
+    hud/           title, exhibit index, zoom / light controls
+  hooks/
+    useBoardCamera.js   pan / zoom / pinch / inertia / animated focus
+  lib/panel.js     side-panel width shared by camera framing and CSS
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Adding a section
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Add an entry to `SECTION_LAYOUT` in `src/data/boardLayout.js` (id, exhibit letter, title,
+   bounds, string anchor).
+2. Create `src/sections/<id>.jsx` exporting `XEvidence` and `XFile`, built from the
+   `components/evidence` primitives and `components/case-file/FileParts`.
+3. Register both in `src/sections/index.js`.
