@@ -28,7 +28,8 @@ function readLayoutFor(width) {
  */
 export default function InvestigationBoard() {
   const [readingId, setReadingId] = useState(null);
-  const [torchOn, setTorchOn] = useState(true);
+  // ?torch=off starts with the torch switched off (used to take the share image)
+  const [torchOn, setTorchOn] = useState(() => typeof window === "undefined" || new URLSearchParams(window.location.search).get("torch") !== "off");
   const [readLayout, setReadLayout] = useState(() => readLayoutFor(1280));
 
   const holdsEntry = useRef(false); // a history entry was added for the held page

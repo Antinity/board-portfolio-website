@@ -58,7 +58,6 @@ export default function Loader() {
       aria-live="polite"
       aria-label="Loading the board"
     >
-      <p className={styles.caption}>Opening the case file</p>
       <p className={styles.number} aria-hidden="true">
         <span ref={numberRef}>0</span>
       </p>

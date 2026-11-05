@@ -8,9 +8,19 @@ const marker = Permanent_Marker({ variable: "--font-marker", weight: "400", subs
 const hand = Caveat({ variable: "--font-hand", subsets: ["latin"] });
 const display = Oswald({ variable: "--font-display", subsets: ["latin"] });
 
+const title = subject.name;
+const description = [
+  "Hey there, I'm Lakshya, a creative designer and fullstack developer, based in India. ☀️",
+  "I design and develop apps, websites and tools that help people reach their best internet potential.",
+].join("\n");
+
+// The share image is src/app/opengraph-image.png (and twitter-image.png): the board with the torch off,
+// captured at 1200 x 630 from /?torch=off.
 export const metadata = {
-  title: `${subject.name} (${subject.alias}) — Case File`,
-  description: `${subject.name} — ${subject.role} from ${subject.origin}. Investigate the board to explore projects, experience and contact details.`,
+  title,
+  description,
+  openGraph: { title, description, type: "website", siteName: subject.name, locale: "en_IN" },
+  twitter: { card: "summary_large_image", title, description, creator: "@antinityfx" },
 };
 
 export const viewport = {
