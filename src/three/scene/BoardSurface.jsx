@@ -34,7 +34,7 @@ function LBracket({ x, y, sx, sy }) {
  * fluorescent tube lives on the beam), against a brick wall.
  */
 export default function BoardSurface() {
-  const surface = useMemo(() => whiteboardTextures([BOARD_W / 1.5, BOARD_H / 1.5]), []);
+  const surface = useMemo(() => whiteboardTextures([BOARD_W / 0.9, BOARD_H / 0.9]), []);
   const wood = useMemo(() => woodTexture(), []);
   const bricks = useMemo(() => brickTexture([9, 7]), []);
 
@@ -87,10 +87,10 @@ export default function BoardSurface() {
         <mesh key={side} geometry={screwHead} material={screwMat} position={[side * postX, beamY, 0.06 + PLANK.depth / 2 + 0.01]} />
       ))}
 
-      {/* whiteboard: satin, not glossy */}
+      {/* whiteboard: matte and grainy */}
       <mesh receiveShadow>
         <planeGeometry args={[BOARD_W, BOARD_H]} />
-        <meshStandardMaterial map={surface.map} bumpMap={surface.bumpMap} bumpScale={0.25} roughness={0.62} />
+        <meshStandardMaterial map={surface.map} bumpMap={surface.bumpMap} bumpScale={0.7} roughness={0.78} />
       </mesh>
 
       {/* aluminium frame + black corner brackets */}

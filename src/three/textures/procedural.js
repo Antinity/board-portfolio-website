@@ -267,6 +267,21 @@ export function whiteboardTextures(bumpRepeat) {
     c.fillStyle = `rgba(60,60,60,${r() * 0.12})`;
     c.fillRect(r() * W, r() * H, 1 + r(), 1 + r());
   }
+  // grain: fine light and dark speckle over the whole surface, then coarser mottling
+  const grain = c.getImageData(0, 0, W, H);
+  const px = grain.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const n = (r() - 0.5) * 34;
+    px[i] += n;
+    px[i + 1] += n;
+    px[i + 2] += n;
+  }
+  c.putImageData(grain, 0, 0);
+  for (let i = 0; i < 9000; i++) {
+    c.fillStyle = `rgba(${r() < 0.5 ? "70,70,66" : "255,255,255"},${0.05 + r() * 0.1})`;
+    const sz = 1.5 + r() * 3.5;
+    c.fillRect(r() * W, r() * H, sz, sz);
+  }
   // grubbier towards the frame
   const edge = c.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.62);
   edge.addColorStop(0, "rgba(80,76,70,0)");
@@ -283,10 +298,11 @@ export function whiteboardTextures(bumpRepeat) {
   const b = bcv.getContext("2d");
   b.fillStyle = "#808080";
   b.fillRect(0, 0, B, B);
-  for (let i = 0; i < 16000; i++) {
-    const v = 110 + r() * 40;
-    b.fillStyle = `rgba(${v},${v},${v},0.5)`;
-    b.fillRect(r() * B, r() * B, 1.5, 1.5);
+  for (let i = 0; i < 60000; i++) {
+    const v = 70 + r() * 120;
+    b.fillStyle = `rgba(${v},${v},${v},0.55)`;
+    const sz = 1 + r() * 2;
+    b.fillRect(r() * B, r() * B, sz, sz);
   }
   const bumpMap = new THREE.CanvasTexture(bcv);
   bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
