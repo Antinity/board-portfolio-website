@@ -1,134 +1,178 @@
-import { subject } from "@/data/content";
-import { todoLineY } from "@/data/boardLayout";
-import { INK, coffeeRing, field, font, linkText, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
+import { subject, witnesses } from "@/data/content";
+import { makeCanvas } from "../textures/procedural";
+import { INK, coffeeRing, font, paperBase, wrapLines, wrapText } from "./common";
+import { markerLine, markerStroke, markerText } from "./marker";
 
-/* Typed and handwritten paper documents. */
+/* Paper documents and writing on the board. */
+
+const MAX_SCALE = 1.9;
 
 /**
- * "Profile of the suspect": the about page, as a typed police profile form
- * with an investigator's marker note at the foot.
+ * "About me": a typed profile form. The text is set as large as the sheet
+ * allows, so the page is filled rather than leaving a blank foot.
  */
 export const profile = {
   paint(ctx, { w, h }, { fonts, r }) {
     paperBase(ctx, w, h, { color: "#eeebe3", r, shade: 0.14 });
-    coffeeRing(ctx, w * 0.82, h * 0.9, 38, r);
+    coffeeRing(ctx, w * 0.84, h * 0.93, 38, r);
     const pad = 34;
     const inner = w - pad * 2;
-
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.display, 34, 600);
-    ctx.fillText("Profile of the suspect", pad, 64);
-    ctx.fillRect(pad, 80, inner, 2.5);
-    ctx.fillRect(pad, 86, inner, 1);
-
     const half = (inner - 24) / 2;
-    let y = 118;
-    field(ctx, "Name", subject.name, pad, y, half, fonts, { valueSize: 20 });
-    y = field(ctx, "Known as", subject.alias, pad + half + 24, y, half, fonts, { valueSize: 20 });
-    field(ctx, "Origin", subject.origin, pad, y, half, fonts, { valueSize: 20 });
-    y = field(ctx, "Active since", String(subject.activeSince), pad + half + 24, y, half, fonts, { valueSize: 20 });
-    y = field(ctx, "Occupation", subject.role, pad, y, inner, fonts, { valueSize: 20 });
 
-    const section = (label, text, maxLines) => {
-      y += 10;
-      ctx.fillStyle = "rgba(40,36,30,0.6)";
-      ctx.font = font(fonts.type, 12);
-      ctx.fillText(label, pad, y);
-      ctx.fillStyle = INK.type;
-      ctx.font = font(fonts.type, 14.5);
-      y = wrapText(ctx, text, pad, y + 22, inner, 20, { maxLines }) + 4;
+    const fields = [
+      ["Name", subject.name, pad, half],
+      ["Known as", subject.alias, pad + half + 24, half],
+      ["Origin", subject.origin, pad, half],
+      ["Active since", String(subject.activeSince), pad + half + 24, half],
+      ["Occupation", subject.role, pad, inner],
+    ];
+    const description = `${subject.bio[0]} ${subject.bio[1]}`;
+
+    /** Lay the whole page out at scale `s` on `c`; returns the y it ends at. */
+    const layout = (c, s) => {
+      c.textAlign = "left";
+      c.fillStyle = INK.type;
+      c.font = font(fonts.display, 46, 600);
+      c.fillText("About me", pad, 66);
+      c.fillRect(pad, 82, inner, 2.5);
+      c.fillRect(pad, 88, inner, 1);
+
+      let y = 124;
+      const row = [];
+      const flush = () => {
+        if (row.length) y = Math.max(...row);
+        row.length = 0;
+      };
+      fields.forEach(([label, value, x, wd], i) => {
+        const ls = 13 * s;
+        const vs = 21 * s;
+        c.fillStyle = "rgba(40,36,30,0.62)";
+        c.font = font(fonts.type, ls);
+        c.fillText(label, x, y);
+        c.fillStyle = INK.type;
+        c.font = font(fonts.type, vs);
+        c.fillText(value, x, y + vs + 3);
+        c.strokeStyle = "rgba(40,36,30,0.25)";
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(x, y + vs + 11);
+        c.lineTo(x + wd, y + vs + 11);
+        c.stroke();
+        row.push(y + vs + 30 * s);
+        if (wd === inner || i % 2 === 1) flush();
+      });
+
+      const section = (label, text) => {
+        y += 8 * s;
+        c.fillStyle = "rgba(40,36,30,0.62)";
+        c.font = font(fonts.type, 13 * s);
+        c.fillText(label, pad, y);
+        c.fillStyle = INK.type;
+        c.font = font(fonts.type, 15.5 * s);
+        y = wrapText(c, text, pad, y + 24 * s, inner, 22 * s) + 6 * s;
+      };
+      section("Description", description);
+      section("Known habits", subject.bio[2]);
+      return y;
     };
-    section("Description", `${subject.bio[0]} ${subject.bio[1]}`, 9);
-    section("Known habits", subject.bio[2], 5);
+
+    // the biggest scale at which every value still fits its column and the page its sheet
+    const probe = makeCanvas(8, 8).getContext("2d");
+    probe.font = font(fonts.type, 21);
+    let s = MAX_SCALE;
+    for (const [, value, , wd] of fields) s = Math.min(s, wd / probe.measureText(value).width);
+    s = Math.max(1, s);
+    while (s > 1 && layout(probe, s) > h - pad * 0.8) s -= 0.02;
+    layout(ctx, s);
   },
 };
 
+/**
+ * The to-do list, written on the board itself: a marker box for each job,
+ * ticked and struck through where it has shipped. Each name opens its site.
+ */
 export const todo = {
+  alpha: true,
   paint(ctx, { w, h, props }, { fonts, r }) {
-    paperBase(ctx, w, h, { color: "#f0eee6", r, shade: 0.12 });
-    // ruled lines + margin
-    ctx.strokeStyle = "rgba(70,110,180,0.25)";
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 11; i++) {
-      const y = h * (todoLineY(i) + 0.03);
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(200,60,60,0.45)";
-    ctx.beginPath();
-    ctx.moveTo(w * 0.13, 0);
-    ctx.lineTo(w * 0.13, h);
-    ctx.stroke();
-
-    ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.marker, 44);
-    ctx.fillText("To do", w * 0.17, h * 0.14);
-
+    const size = 50;
+    const pitch = Math.min(104, (h - 40) / props.items.length);
     const links = [];
+
     props.items.forEach((op, i) => {
-      const y = h * todoLineY(i);
-      const bx = w * 0.055;
-      const bs = 24;
-      ctx.strokeStyle = INK.black;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(bx, y - bs / 2, bs, bs);
-      ctx.fillStyle = INK.black;
-      ctx.font = font(fonts.hand, 38, 600);
-      links.push(linkText(ctx, op.title, w * 0.17, y + 11, op.url, { underline: false }));
+      const y = 78 + i * pitch;
+      const bx = 10;
+      const bs = 44;
+      const by = y - bs * 0.82;
+      const j = () => (r() - 0.5) * 4;
+
+      // the box: four corners in one loop of the pen, never quite closing
+      markerStroke(
+        ctx,
+        [
+          [bx + j(), by + j()],
+          [bx + bs + j(), by + j()],
+          [bx + bs + j(), by + bs + j()],
+          [bx + j(), by + bs + j()],
+          [bx + j() * 0.5, by + 3],
+          [bx + 9, by + j()],
+        ],
+        { color: INK.black, r, width: 4.4, taper: 0.06, wobble: 0.7 }
+      );
+
+      ctx.font = font(fonts.type, size);
+      const tx = 92;
+      const text = markerText(ctx, op.title, tx, y, { f: fonts.type, size, color: INK.black, r, jitter: 1, press: 1.1 });
+
       if (op.done) {
-        const tw = ctx.measureText(op.title).width;
-        ctx.strokeStyle = INK.blue;
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(bx + 4, y);
-        ctx.lineTo(bx + 11, y + 9);
-        ctx.lineTo(bx + bs + 6, y - 16);
-        ctx.stroke();
-        ctx.lineWidth = 2;
-        scribbleLine(ctx, w * 0.16, y, w * 0.17 + tw + 6, y - 2, r, 2);
+        // shipped: struck through, and a big blue tick across the box
+        markerLine(ctx, tx - 6, y - size * 0.3, tx + text.width + 8, y - size * 0.34 + (r() - 0.5) * 6, { color: INK.black, r, width: 3.2, bow: 3, taper: 0.1 });
+        markerStroke(
+          ctx,
+          [
+            [bx + 5, by + bs * 0.55],
+            [bx + bs * 0.38, by + bs + 4],
+            [bx + bs + 14, by - 20],
+          ],
+          { color: INK.blue, r, width: 7, taper: 0.2, wobble: 0.5 }
+        );
       }
+      if (op.url) links.push({ x: tx - 8, y: y - size, w: text.width + 16, h: size * 1.4, href: op.url });
     });
     return links;
   },
 };
 
+/**
+ * What a client said: a plain card. A red marker quote mark, their words,
+ * and their name and company underneath. No form, no stamp.
+ */
 export const crew = {
   paint(ctx, { w, h, props }, { fonts, r }) {
     const { witness } = props;
-    paperBase(ctx, w, h, { color: "#eeebe4", r, shade: 0.12 });
-    const pad = 20;
-    const size = w < 280 ? 15 : 17;
+    paperBase(ctx, w, h, { color: "#f1eee6", r, shade: 0.1 });
+    const pad = 24;
+    const inner = w - pad * 2;
+
+    markerText(ctx, "“", pad - 2, 62, { f: fonts.marker, size: 68, color: INK.red, r, jitter: 0.5, dry: 0 });
+
+    // every card sets its quote at the same size: the largest at which the longest still fits
+    const top = 66;
+    const bottom = h - 64;
+    let size = 20;
+    for (; size >= 11.5; size -= 0.5) {
+      ctx.font = font(fonts.type, size);
+      if (witnesses.every((o) => wrapLines(ctx, o.statement, inner).length * size * 1.32 <= bottom - top)) break;
+    }
+    ctx.fillStyle = INK.type;
+    ctx.font = font(fonts.type, size);
+    const lines = wrapLines(ctx, witness.statement, inner);
+    lines.forEach((line, i) => ctx.fillText(line, pad, top + size + i * size * 1.32));
 
     ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.display, 17, 600);
-    ctx.fillText("Witness statement", pad, pad + 20);
-    ctx.fillRect(pad, pad + 30, w - pad * 2, 1.5);
-
-    const photoW = 84;
-    const photoX = w - pad - photoW;
-    silhouette(ctx, photoX, pad + 46, photoW, 100);
-    ctx.fillStyle = "rgba(30,30,30,0.55)";
-    ctx.font = font(fonts.type, 9);
-    ctx.fillText("No photo on file", photoX, pad + 160);
-
-    let y = pad + 60;
-    const fw = photoX - pad - 14;
-    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: size });
-    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: size });
-    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: size });
-
-    y += 6;
-    ctx.fillStyle = "rgba(40,36,30,0.6)";
-    ctx.font = font(fonts.type, 12);
-    ctx.fillText("Statement", pad, y);
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 12.5);
-    const lineH = 16;
-    const maxLines = Math.max(2, Math.floor((h - 70 - (y + 18)) / lineH));
-    wrapText(ctx, `"${witness.statement}"`, pad, y + 18, w - pad * 2, lineH, { maxLines });
-
-    stamp(ctx, "RECOMMENDS", w / 2, h - 28, { f: fonts.display, size: 17, rot: -0.06, color: INK.blue, r });
+    ctx.font = font(fonts.display, 19, 600);
+    ctx.fillText(witness.name, pad, h - 38);
+    ctx.fillStyle = "rgba(72,58,38,0.78)";
+    ctx.font = font(fonts.type, 13.5);
+    ctx.fillText(`${witness.role}, ${witness.org}`, pad, h - 18, inner);
   },
 };

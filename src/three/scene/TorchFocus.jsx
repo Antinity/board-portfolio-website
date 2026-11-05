@@ -10,7 +10,7 @@ const QUIET = { board: 0.15, aim: 0.3 }; // world units / second
 const MOVING = { board: 0.6, aim: 1.2 };
 
 /** Every clickable item as a rotated rectangle, topmost last. */
-const TARGETS = ITEMS.filter((item) => actionOf(item) !== "none")
+const TARGETS = ITEMS.filter((item) => ["read", "link", "copy"].includes(actionOf(item)))
   .map((item, order) => {
     const [cx, cy] = rectCenter(item);
     const a = (-(item.rot || 0) * Math.PI) / 180; // the item's rotation on the board

@@ -49,6 +49,21 @@ export function wrapText(ctx, text, x, y, maxW, lineH, { maxLines = Infinity, al
   return y;
 }
 
+/** The lines `text` breaks into at `maxW`, in the current font (nothing is drawn). */
+export function wrapLines(ctx, text, maxW) {
+  const lines = [];
+  let line = "";
+  for (const word of String(text).split(/\s+/)) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = word;
+    } else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 /** Off-white sheet with fibre speckle, darkened edges and the odd stain. */
 export function paperBase(ctx, w, h, { color = "#f2ede1", r = Math.random, stains = 0, shade = 0.12 } = {}) {
   ctx.fillStyle = color;

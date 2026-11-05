@@ -7,6 +7,7 @@ import { actionOf } from "@/data/boardLayout";
 import { contact } from "@/data/content";
 import { paintItem } from "../painters";
 import { seeded } from "../painters/common";
+import { smoothNoise } from "../painters/marker";
 import { paperBumpTexture } from "../textures/procedural";
 import { UNIT, itemZ, rectCenter } from "../space";
 import { damp } from "../rig";
@@ -16,8 +17,8 @@ import { Pin, Tape } from "./Fasteners";
 const READ_DIST = 1.6; // how far in front of the camera a page is held to read
 const PICK_UP_SECONDS = 1.15;
 const PUT_BACK_SECONDS = 1.6;
-const CIRCLE_IN_SECONDS = 0.22; // the red marker loop draws on hover…
-const CIRCLE_OUT_SECONDS = 0.18; // …and wipes away when the pointer leaves
+const CIRCLE_IN_SECONDS = 0.62; // the red marker loop is drawn on slowly enough to watch…
+const CIRCLE_OUT_SECONDS = 0.34; // …and wipes away when the pointer leaves
 const READ_TILT = { x: 0.06, y: 0.08 }; // slight tilt toward the pointer while reading (radians)
 
 /**
@@ -29,7 +30,7 @@ function curledPlane(item) {
   const h = item.h * UNIT;
   const geo = new THREE.PlaneGeometry(w, h, 12, 12);
   const r = seeded(item.id);
-  const flat = item.kind === "label";
+  const flat = Boolean(item.ink); // writing on the board is flat
   const curlCorner = [r() < 0.5 ? -1 : 1, r() < 0.7 ? -1 : 1]; // mostly a bottom corner
   const curl = flat ? 0 : (0.015 + r() * 0.035) * Math.min(1, Math.max(w, h) / 3);
   const pos = geo.attributes.position;
@@ -45,23 +46,64 @@ function curledPlane(item) {
   return geo;
 }
 
-/** A loose, overshooting dry-erase loop around an item, in its local space. */
+/**
+ * A loose, overshooting red marker loop drawn around an item, in its local
+ * space: a flat ribbon lying on the board (not a wire) that swells and thins
+ * with the pressure of the pen, thinner where it starts and lifts off.
+ */
 function markerLoop(item) {
   const r = seeded(`${item.id}-loop`);
-  const rx = (item.w * UNIT) / 2 + Math.min(0.32, item.w * UNIT * 0.14);
-  const ry = (item.h * UNIT) / 2 + Math.min(0.28, item.h * UNIT * 0.14);
-  const start = Math.PI * (0.85 + r() * 0.3);
+  const margin = 0.11; // it hugs the item, outside its edge
+  const a = (item.w * UNIT) / 2 + margin;
+  const b = (item.h * UNIT) / 2 + margin;
+  const start = Math.PI * (0.8 + r() * 0.4);
+  const turns = 1.12; // a little past a full turn
+  const e = 2 / 3.4; // squared-off circle: it follows a rectangle
+  const N = 240;
+  const sway = smoothNoise(r, 9);
+  const press = smoothNoise(r, 16);
   const pts = [];
-  const steps = 26;
-  for (let i = 0; i <= steps; i++) {
-    const a = start - (i / steps) * Math.PI * 2 * 1.1; // a little past a full turn
-    const wobble = 1 + (r() - 0.5) * 0.045 + i * 0.0018;
-    pts.push(new THREE.Vector3(Math.cos(a) * rx * wobble, Math.sin(a) * ry * wobble, 0.07));
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const ang = start - t * Math.PI * 2 * turns;
+    const c = Math.cos(ang);
+    const sn = Math.sin(ang);
+    const grow = 1 + t * 0.04 + (sway(t) - 0.5) * 0.06; // the pen wanders and spirals outward
+    pts.push([a * grow * Math.sign(c) * Math.abs(c) ** e, b * grow * Math.sign(sn) * Math.abs(sn) ** e]);
   }
-  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 200, 0.026, 5);
+  const position = [];
+  const index = [];
+  const normal = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const [x0, y0] = pts[Math.max(i - 1, 0)];
+    const [x1, y1] = pts[Math.min(i + 1, N)];
+    const len = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const nx = -(y1 - y0) / len;
+    const ny = (x1 - x0) / len;
+    const lift = Math.min(1, t / 0.05, (1 - t) / 0.07);
+    const w = 0.075 * (0.4 + 0.6 * press(t)) * (0.45 + 0.55 * lift) * (0.92 + r() * 0.16);
+    const [x, y] = pts[i];
+    position.push(x + (nx * w) / 2, y + (ny * w) / 2, 0.03, x - (nx * w) / 2, y - (ny * w) / 2, 0.03);
+    normal.push(0, 0, 1, 0, 0, 1);
+    if (i < N) index.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(normal, 3));
+  geo.setIndex(index);
+  return geo;
 }
 
-const markerInk = new THREE.MeshStandardMaterial({ color: "#b3161d", roughness: 0.7 });
+// dry-erase ink: slightly shiny, lying flat on whatever it is drawn over
+const markerInk = new THREE.MeshStandardMaterial({
+  color: "#b3161d",
+  roughness: 0.42,
+  side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: -2,
+  polygonOffsetUnits: -2,
+});
 
 /** Local position on the item for fraction `at` ([fx, fy], top-left origin). */
 const local = (item, [fx, fy]) => [(fx - 0.5) * item.w * UNIT, (0.5 - fy) * item.h * UNIT];
@@ -75,7 +117,7 @@ const FASTENERS = {
 };
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
 const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
 const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
@@ -116,7 +158,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const [painted, setPainted] = useState(null);
   const geometry = useMemo(() => curledPlane(item), [item]);
   const action = actionOf(item);
-  const loop = useMemo(() => (action === "none" ? null : markerLoop(item)), [item, action]);
+  const loop = useMemo(() => (action === "none" || action === "ink" ? null : markerLoop(item)), [item, action]);
   const bump = useMemo(() => paperBumpTexture(), []);
   const group = useRef(null);
   const fasteners = useRef(null);
@@ -163,7 +205,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       const want = (s.hovered || rig.focus === item.id) && !rig.reading;
       s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
       const n = loop.index.count;
-      const p = easeOutCubic(s.circle);
+      const p = easeOutQuad(s.circle);
       if (want) loop.setDrawRange(0, Math.floor((p * n) / 6) * 6);
       else {
         const startAt = Math.floor(((1 - p) * n) / 6) * 6;
@@ -224,6 +266,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
   if (!painted) return null;
 
+  const ink = Boolean(item.ink); // written on the board in marker: no paper, no fasteners
   const fasten = item.fasten ?? "pin";
   const pins = (FASTENERS[fasten] ?? []).filter(
     (at) => !occupied.some((o) => Math.abs(o[0] - at[0]) * item.w < 40 && Math.abs(o[1] - at[1]) * item.h < 40)
@@ -257,6 +300,11 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
               return;
             }
             if (rig.dragging || rig.reading || performance.now() < rig.suppressClickUntil) return;
+            if (action === "ink") {
+              const link = linkAt(item, painted.links, e.uv);
+              if (link) openLink(link.href);
+              return;
+            }
             if (action === "link") return openLink(item.props.social.url);
             if (action === "copy") return copyEmail();
             state.current.hovered = false;
@@ -266,18 +314,23 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
   return (
     <group ref={group} position={board.pos} quaternion={board.quat}>
-      <mesh geometry={geometry} castShadow receiveShadow {...handlers}>
+      <mesh geometry={geometry} castShadow={!ink} receiveShadow={!ink} renderOrder={ink ? 2 : 0} {...handlers}>
         <meshStandardMaterial
           ref={material}
           map={painted.texture}
           emissiveMap={painted.texture}
           emissive="#ffffff"
           emissiveIntensity={0}
-          bumpMap={bump}
+          bumpMap={ink ? null : bump}
           bumpScale={0.9}
-          roughness={0.96}
-          alphaTest={painted.alpha ? 0.5 : 0}
-          side={painted.alpha ? THREE.DoubleSide : THREE.FrontSide}
+          roughness={ink ? 0.48 : 0.96}
+          transparent={ink}
+          depthWrite={!ink}
+          polygonOffset={ink}
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+          alphaTest={painted.alpha && !ink ? 0.5 : 0}
+          side={painted.alpha && !ink ? THREE.DoubleSide : THREE.FrontSide}
         />
       </mesh>
       {/* the blank back of the sheet, seen when a held page is spun round */}

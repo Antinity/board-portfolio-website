@@ -1,38 +1,35 @@
-import { INK, font, paperBase } from "./common";
+import { INK, font, wrapLines } from "./common";
+import { markerLine, markerStar, markerText, inkWidth } from "./marker";
 
-/* Tape labels, sticky notes and evidence tags. */
+/* Things written straight onto the whiteboard, and sticky notes. */
 
-/** Strip of grey gaffer tape with a marker label, like the reference board. */
+/**
+ * A section heading in marker on the board itself: the words centred in
+ * capitals, a hand-drawn star at each end and a long line underneath.
+ * Nothing is stuck on; it is all ink.
+ */
 export const label = {
   alpha: true,
   paint(ctx, { w, h, props }, { fonts, r }) {
-    // torn tape outline
-    ctx.beginPath();
-    ctx.moveTo(4, 2);
-    for (let y = 0; y <= h; y += 6) ctx.lineTo(r() * 6, y);
-    ctx.lineTo(w - r() * 6, h);
-    for (let y = h; y >= 0; y -= 6) ctx.lineTo(w - r() * 6, y);
-    ctx.closePath();
-    ctx.save();
-    ctx.clip();
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#d6d3cb");
-    g.addColorStop(0.5, "#c8c5bc");
-    g.addColorStop(1, "#bdb9af");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    for (let x = 0; x < w; x += 3) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "#24221f";
-    ctx.font = font(fonts.marker, 32);
-    ctx.textAlign = "center";
-    ctx.fillText(props.text, w / 2, h / 2 + 12);
-    ctx.restore();
+    const text = props.text.toUpperCase();
+    const size = 44;
+    const base = h * 0.6;
+    const pen = { color: INK.black, r };
+
+    ctx.font = font(fonts.type, size);
+    const tw = inkWidth(ctx, text);
+    markerText(ctx, text, w / 2, base, { f: fonts.type, size, align: "center", jitter: 1.1, press: 1.2, ...pen });
+
+    const gap = 38;
+    const sy = base - size * 0.34;
+    markerStar(ctx, w / 2 - tw / 2 - gap, sy, 15, { width: 4.4, ...pen });
+    markerStar(ctx, w / 2 + tw / 2 + gap, sy, 15, { width: 4.4, ...pen });
+
+    // the underline: one long pull of the pen, then a short second pass
+    const y = base + 22;
+    markerLine(ctx, w * 0.035, y + (r() - 0.5) * 4, w * 0.965, y + (r() - 0.5) * 6, { width: 5.2, bow: 4, taper: 0.07, wobble: 1, ...pen });
+    const from = w * (0.55 + r() * 0.15);
+    markerLine(ctx, from, y + 6, from + w * 0.2, y + 5 + (r() - 0.5) * 3, { width: 3, bow: 2, taper: 0.3, wobble: 0.8, alpha: 0.9, ...pen });
   },
 };
 
@@ -66,40 +63,29 @@ export const sticky = {
   },
 };
 
-/** Manila evidence tag with a reinforced string hole. */
+/**
+ * One group of skills, written on the board: its name in marker with a
+ * quick underline, then the list in blue, running on and wrapping like
+ * someone writing it out.
+ */
 export const tag = {
   alpha: true,
   paint(ctx, { w, h, props }, { fonts, r }) {
-    const c = 26;
-    ctx.beginPath();
-    ctx.moveTo(c, 0);
-    ctx.lineTo(w, 0);
-    ctx.lineTo(w, h);
-    ctx.lineTo(c, h);
-    ctx.lineTo(0, h - c);
-    ctx.lineTo(0, c);
-    ctx.closePath();
-    ctx.save();
-    ctx.clip();
-    paperBase(ctx, w, h, { color: "#d9bd84", r, shade: 0.18 });
-    ctx.restore();
-
-    // hole + reinforcement
-    ctx.fillStyle = "#c9a768";
-    ctx.beginPath();
-    ctx.arc(26, h / 2, 13, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(26, h / 2, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = "source-over";
-
     const { group } = props;
-    ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.marker, 24);
-    ctx.fillText(group.group, 54, 42);
-    ctx.font = font(fonts.hand, 22, 500);
-    group.items.forEach((item, i) => ctx.fillText(item, 54, 74 + i * 20));
+    const title = 40;
+    const body = 31;
+    const x = 8;
+
+    ctx.font = font(fonts.marker, title);
+    const tw = inkWidth(ctx, group.group);
+    markerText(ctx, group.group, x, 46, { f: fonts.marker, size: title, color: INK.black, r, jitter: 0.9 });
+    markerLine(ctx, x - 2, 60, x + tw + 14, 59 + (r() - 0.5) * 5, { color: INK.black, r, width: 4, bow: 3, taper: 0.1 });
+
+    ctx.font = font(fonts.type, body);
+    const lines = wrapLines(ctx, group.items.join(", "), w - x * 2);
+    const room = Math.max(1, Math.floor((h - 70) / (body * 1.3)));
+    lines.slice(0, room).forEach((line, i) => {
+      markerText(ctx, line, x, 104 + i * body * 1.3, { f: fonts.type, size: body, color: INK.blue, r, jitter: 1 });
+    });
   },
 };

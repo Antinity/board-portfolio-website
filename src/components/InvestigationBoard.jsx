@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { READABLE, SECTIONS } from "@/data/boardLayout";
+import { READABLE, SECTIONS, WRITTEN } from "@/data/boardLayout";
 import { contact, socials, subject } from "@/data/content";
 import { transcriptFor } from "@/reading/transcripts";
 import ReadingView from "@/reading/ReadingView";
@@ -131,6 +131,18 @@ export default function InvestigationBoard() {
             ))}
         </ul>
       </nav>
+
+      <section className="sr-only" aria-label="Written on the board">
+        {WRITTEN.map((item) => {
+          const { title, body } = transcriptFor(item);
+          return (
+            <article key={item.id}>
+              <h2>{title}</h2>
+              {body}
+            </article>
+          );
+        })}
+      </section>
 
       <ReadingView item={reading} onClose={close} onPrev={prev} onNext={next} />
       <Toast />

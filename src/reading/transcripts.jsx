@@ -27,7 +27,7 @@ const Fields = ({ rows }) => (
 
 const TRANSCRIPTS = {
   profile: () => ({
-    title: "Profile of the suspect",
+    title: "About me",
     body: (
       <>
         <Fields
@@ -96,7 +96,7 @@ const TRANSCRIPTS = {
   }),
 
   tag: ({ props: { group } }) => ({
-    title: `Evidence — ${group.group}`,
+    title: `Skills: ${group.group}`,
     body: (
       <ul>
         {group.items.map((i) => (
