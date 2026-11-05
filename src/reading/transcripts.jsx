@@ -47,9 +47,9 @@ const TRANSCRIPTS = {
   }),
 
 
-  polaroid: () => ({
-    title: subject.name,
-    body: <p>Polaroid of {subject.name} ({subject.alias}), pinned to the centre of the board.</p>,
+  polaroid: ({ props: { photo } }) => ({
+    title: photo ? `Photo of ${subject.name}` : "Photo to come",
+    body: photo ? <p>Polaroid of {subject.name} ({subject.alias}), pinned beside About me.</p> : <p>A blank polaroid: this photo is still to come.</p>,
   }),
 
 

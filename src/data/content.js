@@ -11,7 +11,8 @@ export const subject = {
   origin: "India",
   timezone: "IST (GMT+05:30)",
   activeSince: 2020,
-  photo: "/evidence/avatar.jpg",
+  /** The two photos stacked beside About me; null shows a "photo to come" polaroid. */
+  photos: ["/evidence/avatar.jpg", null],
   role: "Full-stack developer & designer",
   intro:
     "I'm a full-stack developer & designer. I collaborate with companies to craft memorable user experiences, bringing their vision with attention to small details.",

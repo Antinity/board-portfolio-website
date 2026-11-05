@@ -1,21 +1,25 @@
-import { subject } from "@/data/content";
-import { INK, ageImage, drawCover, font, paperBase } from "./common";
+import { ageImage, drawCover, paperBase } from "./common";
+import { sketchedPlaceholder } from "./marker";
 
-/* The photograph of the subject, on matte paper. */
+/* Photographs of the subject: polaroids on matte paper, with a blank strip at the foot. */
 
+const BLANK = "#e4e2dc";
+
+/** `props.photo` is the image, or null for a polaroid still to come (marked in pencil). */
 export const polaroid = {
-  images: () => [subject.photo],
-  paint(ctx, { w, h }, { fonts, r, images }) {
+  images: ({ props }) => (props.photo ? [props.photo] : []),
+  paint(ctx, { w, h, props }, { fonts, r, images }) {
     paperBase(ctx, w, h, { color: "#efede6", r, shade: 0.08 });
     const pad = 14;
-    const ph = w - pad * 2;
-    const img = images[subject.photo];
-    if (img) drawCover(ctx, img, pad, pad, w - pad * 2, ph);
-    ageImage(ctx, pad, pad, w - pad * 2, ph, r, { fade: 0.12, warm: 0.12 });
-    ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.hand, 30, 600);
-    ctx.textAlign = "center";
-    ctx.fillText(subject.name, w / 2, ph + pad + (h - ph - pad) / 2 + 10);
-    ctx.textAlign = "left";
+    const pw = w - pad * 2;
+    const img = props.photo && images[props.photo];
+    if (img) {
+      drawCover(ctx, img, pad, pad, pw, pw);
+      ageImage(ctx, pad, pad, pw, pw, r, { fade: 0.12, warm: 0.12 });
+    } else {
+      ctx.fillStyle = BLANK;
+      ctx.fillRect(pad, pad, pw, pw);
+      sketchedPlaceholder(ctx, pad + 14, pad + 14, pw - 28, pw - 28, { f: fonts.hand, r, note: "photo to come", ground: BLANK });
+    }
   },
 };

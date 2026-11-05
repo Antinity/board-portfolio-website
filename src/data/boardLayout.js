@@ -21,7 +21,7 @@
  * The subject has no heading: the About me page and photo are the centrepiece.
  */
 
-import { operations, socials, stack, witnesses, works } from "./content";
+import { operations, socials, stack, subject, witnesses, works } from "./content";
 
 export const BOARD = { width: 2800, height: 1440, frame: 42 };
 
@@ -92,7 +92,19 @@ export const ITEMS = [
 
   // ---------- Centre: the subject (no heading) ----------
   { id: "subject-profile", section: "subject", kind: "profile", x: 1325, y: 60, w: 455, h: 780, rot: 0.5, z: 1, fasten: "pins" },
-  { id: "subject-photo", section: "subject", kind: "polaroid", x: 995, y: 130, w: 305, h: 366, rot: -3, z: 2 },
+  // two photos stacked beside it, no captions
+  ...subject.photos.map((photo, i) => ({
+    id: i ? `subject-photo-${i + 1}` : "subject-photo",
+    section: "subject",
+    kind: "polaroid",
+    x: [1003, 995][i],
+    y: 74 + i * 392,
+    w: 290,
+    h: 322,
+    rot: [-3, 2.2][i],
+    z: 2,
+    props: { photo },
+  })),
 
   // ---------- Centre: contact ----------
   heading("contact", COL.b, 868),
@@ -125,8 +137,7 @@ export const ITEMS = [
     h: PRINT_H,
     rot: [0.6, -0.5, 0.4, -0.6, 0.5, -0.4, 0.6, -0.5, 0.4][i % 9],
     z: 1,
-    // the magnet keeps clear of the paper clip on the print
-    pins: work.image ? [[0.82, 0.05]] : [[0.5, 0.042]],
+    pins: [[0.82, 0.05]], // the magnet keeps clear of the paper clip on the print
     props: { work },
   })),
 

@@ -1,11 +1,14 @@
+import * as THREE from "three";
 import { caseFileFor } from "@/data/content";
+import { makeCanvas, rng } from "../textures/procedural";
 import { INK, ageImage, bareUrl, drawCover, font, linkText, paperBase, seeded, wrapLines } from "./common";
-import { inkWidth, markerLine, markerStroke, markerText } from "./marker";
+import { inkWidth, markerLine, markerText, sketchedPlaceholder } from "./marker";
 
 /*
  * A job, as a ruled index card. On the board you see its front: the
  * screenshot print held at the top edge by a paper clip (the clip is 3D,
- * see Fasteners), the name handwritten, the details written underneath.
+ * see Fasteners; a blank print marked "photo to come" until a screenshot
+ * is added), the name handwritten, the details written underneath.
  * Picked up, the card opens like a book: the inside of the cover on the
  * left (screenshot, name, facts), the write-up on the right (story, tools,
  * timeline). The inside pages are only painted while the card is open.
@@ -48,8 +51,15 @@ function card(ctx, w, h, r, { header = true, first = HEAD + RULE } = {}) {
   return rules;
 }
 
-/** A matte print with a white border and a soft shadow, turned `rot` about its centre. */
-function print(ctx, img, x, y, w, h, rot, r) {
+const PRINT_PAPER = "#f8f7f2";
+const PRINT_BLANK = "#ecebe5";
+
+/**
+ * A matte print with a white border and a soft shadow, turned `rot` about
+ * its centre. With no screenshot yet, the print is blank and marked in
+ * pencil for the photo to come.
+ */
+function print(ctx, img, x, y, w, h, rot, r, fonts) {
   const border = 6;
   ctx.save();
   ctx.translate(x + w / 2, y + h / 2);
@@ -57,28 +67,19 @@ function print(ctx, img, x, y, w, h, rot, r) {
   ctx.shadowColor = "rgba(30,24,16,0.3)";
   ctx.shadowBlur = 7;
   ctx.shadowOffsetY = 2;
-  ctx.fillStyle = "#f8f7f2";
+  ctx.fillStyle = PRINT_PAPER;
   ctx.fillRect(-w / 2, -h / 2, w, h);
   ctx.shadowColor = "transparent";
-  drawCover(ctx, img, -w / 2 + border, -h / 2 + border, w - border * 2, h - border * 2);
-  ageImage(ctx, -w / 2 + border, -h / 2 + border, w - border * 2, h - border * 2, r, { fade: 0.07, warm: 0.06 });
+  const [ix, iy, iw, ih] = [-w / 2 + border, -h / 2 + border, w - border * 2, h - border * 2];
+  if (img) {
+    drawCover(ctx, img, ix, iy, iw, ih);
+    ageImage(ctx, ix, iy, iw, ih, r, { fade: 0.07, warm: 0.06 });
+  } else {
+    ctx.fillStyle = PRINT_BLANK;
+    ctx.fillRect(ix, iy, iw, ih);
+    sketchedPlaceholder(ctx, ix + 8, iy + 8, iw - 16, ih - 16, { f: fonts.hand, r, note: "photo to come", ground: PRINT_BLANK });
+  }
   ctx.restore();
-}
-
-/** Where the screenshot will go: a box sketched in pencil, crossed through, with a note. */
-function sketchedFrame(ctx, x, y, w, h, fonts, r) {
-  const pen = { color: INK.pencil, r, width: 1.3, taper: 0.04, wobble: 0.5, alpha: 0.7 };
-  const j = () => (r() - 0.5) * 3;
-  markerStroke(ctx, [[x + j(), y + j()], [x + w + j(), y + j()], [x + w + j(), y + h + j()], [x + j(), y + h + j()], [x + j(), y + 4]], pen);
-  markerLine(ctx, x + 6, y + 6, x + w - 6, y + h - 6, { ...pen, width: 0.8, alpha: 0.35, bow: 3 });
-  markerLine(ctx, x + w - 6, y + 6, x + 6, y + h - 6, { ...pen, width: 0.8, alpha: 0.35, bow: 3 });
-  // the note sits on a patch of clean paper so the cross doesn't run through it
-  ctx.font = font(fonts.hand, 17, 600);
-  const note = "screenshot to come";
-  const nw = ctx.measureText(note).width;
-  ctx.fillStyle = STOCK;
-  ctx.fillRect(x + w / 2 - nw / 2 - 8, y + h / 2 - 15, nw + 16, 24);
-  markerText(ctx, note, x + w / 2, y + h / 2 + 3, { f: fonts.hand, size: 17, weight: 600, color: PENCIL, r, align: "center", jitter: 0.6, press: 0.2, dry: 0 });
 }
 
 /** A strip of masking tape laid across a corner. */
@@ -98,6 +99,33 @@ function tape(ctx, cx, cy, w, rot, r) {
   ctx.shadowBlur = 2;
   ctx.fillStyle = "rgba(232,222,192,0.74)";
   ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * The "open in a new tab" mark: a box with an arrow leaving its top-right
+ * corner, drawn in the link's ink. (x, y) is its top-left; `size` its width.
+ */
+function openIcon(ctx, x, y, size, color) {
+  const s = size;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(0.9, s * 0.12);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(s * 0.44, s * 0.22);
+  ctx.lineTo(s * 0.06, s * 0.22);
+  ctx.lineTo(s * 0.06, s * 0.94);
+  ctx.lineTo(s * 0.78, s * 0.94);
+  ctx.lineTo(s * 0.78, s * 0.56);
+  ctx.moveTo(s * 0.4, s * 0.6);
+  ctx.lineTo(s * 0.94, s * 0.06);
+  ctx.moveTo(s * 0.58, s * 0.06);
+  ctx.lineTo(s * 0.94, s * 0.06);
+  ctx.lineTo(s * 0.94, s * 0.42);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -135,24 +163,11 @@ export const casecard = {
       return [linkText(ctx, bareUrl(work.url), pad, y + RULE * 2, work.url)];
     };
 
-    if (img) {
-      const box = printBox(w);
-      print(ctx, img, box.x, 9, box.w, box.h, -0.012, r);
-      const size = fit(ctx, work.title, fonts.marker, 25, inner);
-      markerText(ctx, work.title, pad, 190, { f: fonts.marker, size, color: INK.black, r, jitter: 0.6, press: 0.5, dry: 0.5 });
-      return details(217);
-    }
-
-    // no screenshot yet: the name across the top, what it is written on the lines in pen
-    const size = fit(ctx, work.title, fonts.marker, 27, inner);
-    markerText(ctx, work.title, pad, HEAD - 8, { f: fonts.marker, size, color: INK.black, r, jitter: 0.6, press: 0.5, dry: 0.5 });
-    if (!work.summary) return details(HEAD + RULE - 3); // nothing to say yet: the details go straight under the name
-    ctx.font = font(fonts.hand, 19, 600);
-    wrapLines(ctx, work.summary, inner)
-      .slice(0, 6)
-      .forEach((line, i) => {
-        markerText(ctx, line, pad, HEAD + RULE * (i + 1) - 3, { f: fonts.hand, size: 19, weight: 600, color: INK.blue, r, jitter: 0.5, press: 0.25, dry: 0 });
-      });
+    // every job leads with its screenshot, clipped to the card (a blank print until there is one)
+    const box = printBox(w);
+    print(ctx, img, box.x, 9, box.w, box.h, -0.012, r, fonts);
+    const size = fit(ctx, work.title, fonts.marker, 25, inner);
+    markerText(ctx, work.title, pad, 190, { f: fonts.marker, size, color: INK.black, r, jitter: 0.6, press: 0.5, dry: 0.5 });
     return details(217);
   },
 
@@ -170,13 +185,9 @@ export const casecard = {
 
         const box = printBox(w);
         const top = 16;
-        if (img) {
-          print(ctx, img, box.x + 2, top, box.w - 4, box.h - 2, 0.006, r);
-          tape(ctx, box.x + 18, top + 2, 46, -0.62, r);
-          tape(ctx, box.x + box.w - 18, top + 2, 46, 0.6, r);
-        } else {
-          sketchedFrame(ctx, box.x + 4, top + 2, box.w - 8, box.h - 6, fonts, r);
-        }
+        print(ctx, img, box.x + 2, top, box.w - 4, box.h - 2, 0.006, r, fonts);
+        tape(ctx, box.x + 18, top + 2, 46, -0.62, r);
+        tape(ctx, box.x + box.w - 18, top + 2, 46, 0.6, r);
 
         const tb = top + box.h + 36;
         const size = fit(ctx, work.title, fonts.marker, 26, inner);
@@ -197,8 +208,14 @@ export const casecard = {
           ctx.textAlign = "left";
           ctx.font = font(fonts.type, 11.5);
           ctx.fillStyle = href ? INK.blue : INK.type;
-          if (href) links.push(linkText(ctx, value, pad + labelW, y, href));
-          else ctx.fillText(value, pad + labelW, y, inner - labelW);
+          if (href) {
+            // the link, then the mark that says it opens in a new tab; both are one click target
+            const link = linkText(ctx, value, pad + labelW, y, href);
+            const icon = 9;
+            openIcon(ctx, link.x + link.w + 1, y - icon * 0.95, icon, INK.blue);
+            link.w += icon + 5;
+            links.push(link);
+          } else ctx.fillText(value, pad + labelW, y, inner - labelW);
           y += 16;
         };
         rows.forEach(([label, value]) => row(label, value));
@@ -293,3 +310,18 @@ export const casecard = {
     },
   },
 };
+
+let stock = null;
+/** Plain index-card stock with no rules: the back of a leaf. One texture shared by every card. */
+export function blankStockTexture() {
+  if (stock) return stock;
+  const w = 270;
+  const h = 296;
+  const canvas = makeCanvas(w * 2, h * 2);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+  paperBase(ctx, w, h, { color: STOCK, r: rng(91), shade: 0.06 });
+  stock = new THREE.CanvasTexture(canvas);
+  stock.colorSpace = THREE.SRGBColorSpace;
+  return stock;
+}

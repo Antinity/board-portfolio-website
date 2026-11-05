@@ -151,3 +151,21 @@ export function markerText(ctx, text, x, y, { f, size, color, r, align = "left",
   ctx.restore();
   return { left, width: total };
 }
+
+/**
+ * Where a picture will go: a box sketched in pencil, crossed through, with a
+ * note on a patch of clean paper (`ground`) so the cross doesn't run through it.
+ */
+export function sketchedPlaceholder(ctx, x, y, w, h, { f, r, note, ground, color = "#4a4740" }) {
+  const pen = { color, r, width: 1.3, taper: 0.04, wobble: 0.5, alpha: 0.7 };
+  const j = () => (r() - 0.5) * 3;
+  markerStroke(ctx, [[x + j(), y + j()], [x + w + j(), y + j()], [x + w + j(), y + h + j()], [x + j(), y + h + j()], [x + j(), y + 4]], pen);
+  markerLine(ctx, x + 6, y + 6, x + w - 6, y + h - 6, { ...pen, width: 0.8, alpha: 0.35, bow: 3 });
+  markerLine(ctx, x + w - 6, y + 6, x + 6, y + h - 6, { ...pen, width: 0.8, alpha: 0.35, bow: 3 });
+  const size = Math.min(17, w / 7.5);
+  ctx.font = font(f, size, 600);
+  const nw = ctx.measureText(note).width;
+  ctx.fillStyle = ground;
+  ctx.fillRect(x + w / 2 - nw / 2 - 8, y + h / 2 - size * 0.9, nw + 16, size * 1.45);
+  markerText(ctx, note, x + w / 2, y + h / 2 + size * 0.2, { f, size, weight: 600, color: "rgba(62,58,52,0.66)", r, align: "center", jitter: 0.6, press: 0.2, dry: 0 });
+}

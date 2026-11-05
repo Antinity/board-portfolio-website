@@ -6,9 +6,11 @@ import * as THREE from "three";
 import { actionOf } from "@/data/boardLayout";
 import { contact } from "@/data/content";
 import { paintItem, paintPages, pagesOf } from "../painters";
+import { blankStockTexture } from "../painters/cases";
 import { seeded } from "../painters/common";
 import { smoothNoise } from "../painters/marker";
 import { paperBumpTexture } from "../textures/procedural";
+import { sharpKey, sharpMaps, sharpen } from "../textures/sharpen";
 import { UNIT, itemZ, rectCenter } from "../space";
 import { damp } from "../rig";
 import { loading } from "../loading";
@@ -243,8 +245,20 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const pageMats = useMemo(() => {
     if (!book) return null;
     const page = (side) =>
-      new THREE.MeshStandardMaterial({ color: STOCK, roughness: 0.96, bumpMap: bump, bumpScale: 0.9, side, emissive: "#000000", emissiveIntensity: 0 });
-    return { left: page(THREE.BackSide), right: page(THREE.FrontSide) };
+      sharpen(new THREE.MeshStandardMaterial({ color: STOCK, roughness: 0.96, bumpMap: bump, bumpScale: 0.9, side, emissive: "#000000", emissiveIntensity: 0 }));
+    // the back of the leaf underneath: blank card stock, lit like the pages so it reads as the same paper
+    const stockMap = blankStockTexture();
+    const back = sharpen(new THREE.MeshStandardMaterial({
+      map: stockMap,
+      emissiveMap: stockMap,
+      emissive: "#ffffff",
+      emissiveIntensity: 0,
+      roughness: 0.96,
+      bumpMap: bump,
+      bumpScale: 0.9,
+      side: THREE.BackSide,
+    }));
+    return { left: page(THREE.BackSide), right: page(THREE.FrontSide), back };
   }, [book, bump]);
 
   useEffect(() => () => leaves && Object.values(leaves).forEach((g) => g.dispose()), [leaves]);
@@ -340,9 +354,11 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     // red marker loop: drawn quickly on hover, wiped from its start on leave
     if (loop) {
-      const onBoard = s.t === 0; // not while it is held, or flying back to its place
-      if (loopMesh.current) loopMesh.current.visible = !rig.reading && onBoard;
-      const want = (s.hovered || rig.focus === item.id) && !rig.reading && onBoard;
+      // only on the board: never while a page is held, or until one put back has landed
+      const settled = !rig.reading && s.t === 0 && rig.readT < 0.001;
+      if (loopMesh.current) loopMesh.current.visible = settled;
+      if (!settled) s.circle = 0; // it starts again from nothing once everything has landed
+      const want = (s.hovered || rig.focus === item.id) && settled;
       s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
       const n = loop.index.count;
       const p = easeOutQuad(s.circle);
@@ -390,6 +406,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
         [gutterUnder.current, 0.0006],
         [gutterCover.current, -0.0006],
       ]) {
+        if (!m) continue;
         m.scale.set(GUTTER, sideways ? H : W, 1);
         m.rotation.set(0, 0, sideways ? 0 : -Math.PI / 2);
         m.position.set(sideways ? (GUTTER - W) / 2 : 0, sideways ? 0 : (H - GUTTER) / 2, z);
@@ -402,6 +419,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       if (pageMats) {
         pageMats.left.emissiveIntensity = e * 0.5;
         pageMats.right.emissiveIntensity = e * 0.5;
+        pageMats.back.emissiveIntensity = e * 0.5;
       }
     }
     camera.getWorldDirection(tmp.fwd);
@@ -510,6 +528,8 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const front = (
     <meshStandardMaterial
       ref={material}
+      onBeforeCompile={sharpMaps}
+      customProgramCacheKey={sharpKey}
       map={painted.texture}
       emissiveMap={painted.texture}
       emissive="#ffffff"
@@ -535,9 +555,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           <group ref={under} rotation={[0, 0, BOOK_SKEW]}>
             <mesh geometry={leaves.sheet} material={pageMats.right} receiveShadow {...handlersFor(inside?.right.links)} />
             <mesh ref={gutterUnder} geometry={gutterGeometry} material={gutter} />
-            <mesh geometry={leaves.sheet} receiveShadow>
-              {blankBack}
-            </mesh>
+            <mesh geometry={leaves.sheet} material={pageMats.back} receiveShadow />
           </group>
           {/* the cover, on a hinge along its left edge (or its top edge, opened like a notepad) */}
           <group ref={hinge} position={[-W / 2, 0, 0.0025]}>
@@ -548,7 +566,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
               <mesh ref={insideSide} geometry={leaves.insideSide} material={pageMats.left} receiveShadow {...handlersFor(inside?.left.links)} />
               <mesh ref={insideTop} geometry={leaves.insideTop} material={pageMats.left} receiveShadow visible={false} {...handlersFor(inside?.left.links)} />
               <mesh ref={gutterCover} geometry={gutterGeometry} material={gutter} />
-              {item.props.work?.image && <Clip position={[-W * 0.27, H / 2 + 0.17 - CLIP_TOP, 0.001]} rot={0.07} />}
+              {item.kind === "case" && <Clip position={[-W * 0.27, H / 2 + 0.17 - CLIP_TOP, 0.001]} rot={0.07} />}
             </group>
           </group>
         </group>
