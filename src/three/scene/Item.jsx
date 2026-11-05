@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { actionOf } from "@/data/boardLayout";
 import { contact } from "@/data/content";
@@ -264,6 +264,7 @@ async function copyEmail() {
  */
 export default function Item({ item, occupied = [], rig, selected, onRead, readLayout }) {
   const [painted, setPainted] = useState(null);
+  const gl = useThree((s) => s.gl);
   const geometry = useMemo(() => curledPlane(item), [item]);
   const action = actionOf(item);
   const loop = useMemo(() => (action === "none" || action === "ink" ? null : markerLoop(item)), [item, action]);
@@ -387,6 +388,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     paintItem(item).then((res) => {
       texture = res.texture;
       if (!alive) return texture.dispose();
+      gl.initTexture(texture); // upload now, while the loader is up, rather than on the first frame shown
       setPainted(res);
       loading.step(item.id);
     });
@@ -394,7 +396,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       alive = false;
       texture?.dispose();
     };
-  }, [item]);
+  }, [gl, item]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => loop?.dispose(), [loop]);

@@ -44,22 +44,33 @@ function loadImage(src) {
   return imageCache.get(src);
 }
 
-// Paint one item per animation frame, so the loader keeps moving smoothly
-// instead of freezing while every texture is drawn in one long task.
+// Paints run one after another in short slices: as many as fit in SLICE_MS,
+// then the page gets the main thread back for a moment (so the loader keeps
+// counting smoothly). They used to wait for an animation frame each, which on
+// a slow GPU meant one sheet per rendered frame: a minute to load at 1 fps.
+const SLICE_MS = 12;
 let queue = Promise.resolve();
-const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+let sliceStart = 0;
+const breathe = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-/** Run `fn` after the paints already queued, on a frame of its own. */
+/** Run `fn` after the paints already queued, yielding between slices. */
 function enqueue(fn) {
-  const job = queue.then(nextFrame).then(fn);
+  const job = queue.then(async () => {
+    if (performance.now() - sliceStart > SLICE_MS) {
+      await breathe();
+      sliceStart = performance.now();
+    }
+    return fn();
+  });
   queue = job.catch(() => {});
   return job;
 }
 
-/** Paint an item to a CanvasTexture (queued: one per frame). */
+/** Paint an item to a CanvasTexture (queued). Its images start downloading at once, in parallel. */
 export function paintItem(item) {
   const painter = PAINTERS[item.kind];
   if (!painter) throw new Error(`No painter for kind "${item.kind}"`);
+  painter.images?.(item).forEach(loadImage);
   return enqueue(() => paintNow(item, painter, DENSITY));
 }
 

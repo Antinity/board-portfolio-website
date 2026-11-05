@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Object3D, Vector3 } from "three";
 import { torchCookie } from "../textures/procedural";
 import { loading } from "../loading";
+import { liteUniforms } from "../lite";
 
 /** Tunables for the feel of the torch. */
 const TORCH = {
@@ -53,6 +54,7 @@ export default function Flashlight({ rig, on = true, quality = "high" }) {
   useEffect(() => {
     reduceMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (light.current) light.current.target = target;
+    liteUniforms.uLiteTorchCookie.value = cookie;
     // the torch clicks on just after the loader clears
     const unsubscribe = loading.subscribe(({ ready }) => {
       if (ready && state.current.bootAt === Infinity) state.current.bootAt = performance.now() + 250;
@@ -128,6 +130,12 @@ export default function Flashlight({ rig, on = true, quality = "high" }) {
     const booting = now > s.bootAt && now < s.bootAt + 450;
     const flicker = now < s.flickerUntil || booting ? 0.45 + Math.random() * 0.55 : 1;
     l.intensity = TORCH.intensity * s.power * flicker;
+
+    // the same beam for lite shading (lite.js)
+    liteUniforms.uLiteTorchPos.value.copy(l.position);
+    liteUniforms.uLiteTorchAim.value.copy(target.position);
+    liteUniforms.uLiteTorchRadius.value = throwDist * Math.tan(l.angle);
+    liteUniforms.uLiteTorchColor.value.copy(l.color).multiplyScalar(l.intensity);
   });
 
   return (

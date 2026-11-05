@@ -9,8 +9,11 @@ import ReadingView from "@/reading/ReadingView";
 import Loader from "@/components/Loader";
 import Toast from "@/components/Toast";
 
-// WebGL only runs in the browser.
-const Experience = dynamic(() => import("@/three/Experience"), { ssr: false });
+// WebGL only runs in the browser. The 3D code starts downloading as soon as
+// this module runs in the browser, rather than after the page has hydrated.
+const loadExperience = () => import("@/three/Experience");
+if (typeof window !== "undefined") loadExperience();
+const Experience = dynamic(loadExperience, { ssr: false });
 
 /** Where a page is held while reading, as fractions of the visible area (centred). */
 function readLayoutFor(width) {

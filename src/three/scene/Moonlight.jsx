@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { loading } from "../loading";
+import { liteUniforms } from "../lite";
 
 /**
  * Cold light through a high window: everything stays faintly visible.
@@ -10,12 +12,22 @@ import { useFrame } from "@react-three/fiber";
  */
 export default function Moonlight({ rig }) {
   const light = useRef(null);
+  const sky = useRef(null);
   const wasMoving = useRef(false);
   const warmUntil = useRef(0);
 
   useEffect(() => {
     light.current.shadow.autoUpdate = false;
-    warmUntil.current = performance.now() + 8000; // items paint in asynchronously after load
+    // the same light for lite shading (lite.js)
+    const l = light.current;
+    liteUniforms.uLiteMoonDir.value.copy(l.position).sub(l.target.position).normalize();
+    liteUniforms.uLiteMoonColor.value.copy(l.color).multiplyScalar(l.intensity);
+    liteUniforms.uLiteSky.value.copy(sky.current.color).multiplyScalar(sky.current.intensity);
+    liteUniforms.uLiteGround.value.copy(sky.current.groundColor).multiplyScalar(sky.current.intensity);
+    warmUntil.current = Infinity; // until the board is shown…
+    return loading.subscribe(({ ready }) => {
+      if (ready) warmUntil.current = performance.now() + 3000; // …and a little after
+    });
   }, []);
 
   useFrame(() => {
@@ -28,7 +40,7 @@ export default function Moonlight({ rig }) {
 
   return (
     <>
-      <hemisphereLight args={["#4a5878", "#120e0a", 0.16]} />
+      <hemisphereLight ref={sky} args={["#4a5878", "#120e0a", 0.16]} />
       <directionalLight
         ref={light}
         color="#9fb4e8"

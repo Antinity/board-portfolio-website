@@ -30,7 +30,7 @@ export default function Loader() {
       const dt = Math.min(now - last, 64) / 1000;
       last = now;
       // ease toward the target, with a gentle floor speed so it never stalls
-      shown = Math.min(target, shown + Math.max((target - shown) * (1 - Math.exp(-dt * 5)), dt * 6));
+      shown = Math.min(target, shown + Math.max((target - shown) * (1 - Math.exp(-dt * 9)), dt * 12));
       const value = Math.floor(shown);
       if (numberRef.current) numberRef.current.textContent = String(value);
       if (barRef.current) barRef.current.style.transform = `scaleX(${shown / 100})`;

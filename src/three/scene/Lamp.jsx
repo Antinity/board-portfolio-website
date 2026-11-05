@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { loading } from "../loading";
+import { liteUniforms } from "../lite";
 import * as THREE from "three";
 import { BOARD_H, FRAME, PLANK } from "../space";
 
@@ -33,7 +35,18 @@ export default function Lamp({ rig }) {
     const l = light.current;
     l.target = target;
     l.shadow.autoUpdate = false;
-    warmUntil.current = performance.now() + 8000;
+    // where the tube is and where it points, for lite shading (lite.js)
+    l.updateWorldMatrix(true, false);
+    target.updateWorldMatrix(true, false);
+    const at = l.getWorldPosition(new THREE.Vector3());
+    liteUniforms.uLiteLampPos.value.copy(at);
+    liteUniforms.uLiteLampDir.value.copy(target.getWorldPosition(new THREE.Vector3()).sub(at).normalize());
+    liteUniforms.uLiteLampCos.value = Math.cos(l.angle);
+    liteUniforms.uLiteLampColor.value.copy(l.color).multiplyScalar(l.intensity);
+    warmUntil.current = Infinity; // until the board is shown, and a little after
+    return loading.subscribe(({ ready }) => {
+      if (ready) warmUntil.current = performance.now() + 3000;
+    });
   }, [target]);
 
   useFrame(() => {

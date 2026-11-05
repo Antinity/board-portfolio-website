@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Vector3 } from "three";
 import { HOME_ITEM, ITEMS, itemById } from "@/data/boardLayout";
@@ -20,8 +20,16 @@ import LoadingGate from "./scene/LoadingGate";
 import TorchFocus from "./scene/TorchFocus";
 import QualityGovernor from "./scene/QualityGovernor";
 import QualitySettings from "./scene/QualitySettings";
-import { startingQuality } from "./quality";
+import { firstLite, startingQuality } from "./quality";
+import { loading } from "./loading";
 import ClickGuard from "./scene/ClickGuard";
+
+// A plain draw slower than these (ms) starts on lite shading / without effects.
+// The timed draw also waits on a pixel read-back and the shadow maps, so even a
+// capable GPU reads 15–35 ms here: only plainly slow ones are moved, and the
+// governor sorts out everything in between once the board is shown.
+const PROBE_LITE_MS = 150;
+const PROBE_PLAIN_MS = 90;
 
 /**
  * The 3D board: whiteboard + frame, every item, red strings, the torch,
@@ -48,17 +56,36 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
   const quality = rung.fx;
   const dpr = Math.min(window.devicePixelRatio || 1, rung.dpr);
 
+  // Nothing is drawn while the loader covers the board: on a slow GPU every
+  // frame rendered behind it was time taken from painting the sheets.
+  const [shown, setShown] = useState(false);
+  useEffect(() => loading.subscribe(({ ready }) => ready && setShown(true)), []);
+
+  // One timed draw before the board is shown (LoadingGate): a GPU that is far
+  // off the mark starts lower down the ladder instead of showing a slideshow
+  // while the governor walks it down.
+  const onProbe = useCallback(
+    (ms) => {
+      if (start.pinned || !ms) return;
+      const lite = firstLite(start.ladder);
+      if (ms > PROBE_LITE_MS) setLevel((l) => Math.max(l, lite));
+      else if (ms > PROBE_PLAIN_MS) setLevel((l) => Math.max(l, lite - 1));
+    },
+    [start]
+  );
+
   return (
     <Canvas
       shadows
       flat={quality !== "off"}
       dpr={dpr}
+      frameloop={shown ? "always" : "never"}
       camera={{ fov: 32, near: 0.3, far: 300, position: [0, 0, 34] }}
       gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
     >
       <color attach="background" args={["#050505"]} />
-      <LoadingGate steps={ITEMS.length + 1} />
+      <LoadingGate steps={ITEMS.length + 1} onProbe={onProbe} />
       <Moonlight rig={rig} />
       <Lamp rig={rig} />
 
@@ -82,9 +109,9 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       <TorchFocus rig={rig} />
       <ClickGuard rig={rig} />
       <CameraRig rig={rig} />
-      {!start.pinned && <QualityGovernor level={level} last={start.ladder.length - 1} onStep={setLevel} />}
+      {!start.pinned && <QualityGovernor level={level} ladder={start.ladder} onStep={setLevel} />}
       <QualitySettings rig={rig} quality={quality} />
-      {quality !== "off" && <PostFX rig={rig} quality={quality} />}
+      {["high", "medium", "low"].includes(quality) && <PostFX rig={rig} quality={quality} />}
     </Canvas>
   );
 }

@@ -10,18 +10,22 @@
  *                 for the ambient occlusion
  *  - fx "low":    as medium with 2x MSAA and a smaller torch shadow map
  *  - fx "off":    no post-processing; the renderer tone-maps instead
+ *  - fx "lite":   no shadow maps, and cheap diffuse lighting (lite.js): for
+ *                 GPUs that can't manage the rest at any sensible resolution
  *
  * `dpr` caps the pixel ratio (below 1 renders under the screen's resolution).
+ * It never goes below 0.75: under that, the writing on the board smears into
+ * grey, and the cheaper shading has to make up the difference instead.
  */
 export const DESKTOP_LADDER = [
   { fx: "high", dpr: 1.5 },
   { fx: "medium", dpr: 1.5 },
   { fx: "medium", dpr: 1.25 },
   { fx: "low", dpr: 1 },
-  { fx: "low", dpr: 0.85 },
-  { fx: "off", dpr: 0.85 },
-  { fx: "off", dpr: 0.7 },
-  { fx: "off", dpr: 0.55 },
+  { fx: "off", dpr: 1 },
+  { fx: "lite", dpr: 1 },
+  { fx: "lite", dpr: 0.85 },
+  { fx: "lite", dpr: 0.75 },
 ];
 
 /** Phones and tablets: sharper screens, weaker GPUs, never the depth passes. */
@@ -30,11 +34,14 @@ export const TOUCH_LADDER = [
   { fx: "medium", dpr: 1.5 },
   { fx: "low", dpr: 1.5 },
   { fx: "low", dpr: 1.25 },
-  { fx: "low", dpr: 1 },
-  { fx: "off", dpr: 1 },
-  { fx: "off", dpr: 0.8 },
-  { fx: "off", dpr: 0.65 },
+  { fx: "off", dpr: 1.25 },
+  { fx: "lite", dpr: 1.5 },
+  { fx: "lite", dpr: 1.25 },
+  { fx: "lite", dpr: 1 },
 ];
+
+/** The first lite rung of a ladder: where a very slow GPU should go straight to. */
+export const firstLite = (ladder) => ladder.findIndex((r) => r.fx === "lite");
 
 /** The GPU's name, if the browser will say. */
 function gpuName() {
@@ -52,19 +59,19 @@ function gpuName() {
 
 /**
  * Which ladder, and which rung to start on. `?fx=high|medium|low|off` pins
- * the effects and turns the governor off.
+ * the effects and turns the governor off (`lite` too).
  */
 export function startingQuality() {
   const touch = window.matchMedia("(pointer: coarse)").matches;
   const ladder = touch ? TOUCH_LADDER : DESKTOP_LADDER;
   const forced = new URLSearchParams(window.location.search).get("fx");
-  if (["high", "medium", "low", "off"].includes(forced)) {
+  if (["high", "medium", "low", "off", "lite"].includes(forced)) {
     return { ladder, level: Math.max(0, ladder.findIndex((r) => r.fx === forced)), pinned: true, touch };
   }
 
   const gpu = gpuName();
   let level = 0;
-  if (/swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(gpu)) level = 5; // no GPU at all
+  if (/swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(gpu)) level = ladder.length - 1; // no GPU at all
   else if (!touch && /intel|mali|adreno|powervr|videocore|vivante|radeon\(tm\) graphics|vega \d+ graphics/i.test(gpu) && !/\barc\b/i.test(gpu)) level = 1; // integrated graphics
   if ((navigator.hardwareConcurrency || 8) <= 4) level = Math.max(level, 2);
   return { ladder, level, pinned: false, touch, gpu };

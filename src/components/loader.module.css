@@ -11,7 +11,7 @@
     calc(var(--pad) + env(safe-area-inset-bottom)) calc(var(--pad) + env(safe-area-inset-left));
   background: var(--room);
   color: var(--paper);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .loader[data-leaving] {
