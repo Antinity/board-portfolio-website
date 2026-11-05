@@ -1,159 +1,198 @@
 /**
- * All portfolio content lives here. Edit this file to fill in your own details —
- * the board and the expanded case files both read from it.
- *
- * Any `image` field can be set to a path in /public (e.g. "/photos/me.jpg").
- * When left `null`, a generated placeholder snapshot is shown instead.
+ * Everything the board says about you. Sourced from antinity-website.vercel.app
+ * and github.com/antinity — edit freely; the board and the case files both read
+ * from here. Images live in /public/evidence.
  */
 
-export const caseInfo = {
-  caseNumber: "0451",
-  name: "Your Name",
-  firstName: "Your",
-  title: "Creative Developer",
-  status: "Open",
-  opened: "2026",
+export const subject = {
+  name: "Lakshya Kumar",
+  alias: "Antinity",
+  age: 15,
+  origin: "India",
+  timezone: "IST (GMT+05:30)",
+  activeSince: 2020,
+  photo: "/evidence/avatar.jpg",
+  photoCaption: "Last known photo",
+  role: "Full-stack developer",
+  tagline: "Obsessed with beautiful designs.",
+  bio: [
+    "15-year-old student and developer from India. Web dev since 2020.",
+    "Works with JavaScript frameworks and scalable builds, plus design tools and video editing apps — motion graphics, video editing and visual design.",
+    "Obsessed with clean UI, sharp details and fast UX.",
+  ],
+  traits: ["Clean UI", "Sharp details", "Fast UX", "Motion & video", "Ships fast"],
 };
 
-export const profile = {
-  image: null,
-  alias: "The Developer",
-  occupation: "Creative Developer",
-  location: "City, Country",
-  status: "Available for work",
-  languages: "English, ...",
-  summary: [
-    "Placeholder bio. Write two or three sentences about who you are, what you build, and what drives you.",
-    "Add a second paragraph about your approach, the kind of teams you thrive in, or what you are looking for next.",
-  ],
-  traits: ["Detail obsessed", "Ships fast", "Curious", "Team player"],
-};
+/** Paid / client work. `id`s are referenced by the board's red strings. */
+export const projects = [
+  {
+    id: "nexora",
+    title: "Nexora Visuals",
+    kind: "React website",
+    stack: ["React"],
+    image: "/evidence/nexoravisuals.png",
+    url: "https://nexoravisuals.vercel.app/",
+    summary:
+      "High-converting landing page for a content agency — polished UI, motion, clear service presentation and strong visual hierarchy.",
+  },
+  {
+    id: "mtt",
+    title: "Minemen Tier Tests",
+    kind: "Next.js website",
+    stack: ["Next.js"],
+    image: "/evidence/mtt.png",
+    url: "https://mtt-web.vercel.app/",
+    summary: "Full-stack website for Minemen Tier Tests, written in Next.js.",
+  },
+  {
+    id: "raam",
+    title: "Rural Advertising & Marketing",
+    kind: "VanillaJS website",
+    stack: ["JavaScript"],
+    image: "/evidence/raam.png",
+    url: "https://www.ruraladvertisingandmarketing.com/",
+    summary: "Marketing website built with vanilla JavaScript.",
+  },
+  {
+    id: "unipower",
+    title: "Unipower",
+    kind: "PHP website",
+    stack: ["PHP"],
+    image: "/evidence/unipower.png",
+    url: "https://myunipower.com/",
+    summary: "PHP-based business website.",
+  },
+  {
+    id: "mtl",
+    title: "Minemen Tier List",
+    kind: "PHP website",
+    stack: ["PHP"],
+    image: "/evidence/mtl.png",
+    url: "https://mtl.babsoft.in/",
+    summary: "PHP-based tier list website for a Minecraft PvP community.",
+  },
+];
+
+/** The to-do list: shipped (done) and currently building (open). */
+export const operations = [
+  {
+    id: "op-tiertests",
+    title: "TierTests",
+    done: true,
+    url: "https://tiertests.com/",
+    summary:
+      "Full platform ecosystem — animated landing page, live results feed, functional store, global leaderboards with multiple game modes, markdown-powered resources, customisable user profiles and social features.",
+  },
+  {
+    id: "op-nexora",
+    title: "NexoraVisuals",
+    done: true,
+    url: "https://nexoravisuals.vercel.app/",
+    summary: "Landing page for a content agency, focused on polish, motion and visual hierarchy.",
+  },
+  {
+    id: "op-ghast",
+    title: "Ghast.io frontend",
+    done: true,
+    url: "https://ghast.io/",
+    summary: "Preset system, advanced configuration panel and contextual hover tooltips (Redux).",
+  },
+  {
+    id: "op-whatnow",
+    title: "WhatNow",
+    done: false,
+    url: "https://whatnow-web.vercel.app",
+    summary: "Career guidance platform helping students make better decisions at different stages of life.",
+  },
+  {
+    id: "op-proklok",
+    title: "Proklok",
+    done: false,
+    url: "https://proklok.vercel.app/",
+    summary: "AI-first all-in-one tool for landlords to manage rentals, PGs, hostels and flats.",
+  },
+  {
+    id: "op-ytr",
+    title: "YouTube Reimagined",
+    done: false,
+    url: "https://github.com/Antinity/youtube-reimagined",
+    summary: "Customisable YouTube extension with community-made plugins and themes.",
+  },
+];
 
 export const experience = [
   {
-    id: "exp-1",
-    role: "Senior Developer",
-    company: "Company One",
-    period: "2024 — Now",
-    location: "Remote",
-    summary: "Placeholder description of the role and the impact you had.",
-    highlights: ["Key achievement one", "Key achievement two", "Key achievement three"],
-  },
-  {
-    id: "exp-2",
+    id: "ghast",
     role: "Frontend Developer",
-    company: "Company Two",
-    period: "2022 — 2024",
-    location: "City",
-    summary: "Placeholder description of the role and the impact you had.",
-    highlights: ["Key achievement one", "Key achievement two"],
+    company: "Ghast.io · Auraside",
+    period: null, // add dates, e.g. "2024 — 2025"
+    url: "https://ghast.io/",
+    summary: "Ghast is a Windows app that optimises your network connection. Worked on the frontend app, implementing features.",
+    highlights: [
+      "Preset system",
+      "Advanced configuration panel",
+      "Contextual hover tooltips for better UX",
+      "State management with Redux",
+    ],
   },
   {
-    id: "exp-3",
-    role: "Junior Developer",
-    company: "Company Three",
-    period: "2020 — 2022",
-    location: "City",
-    summary: "Placeholder description of the role and the impact you had.",
-    highlights: ["Key achievement one", "Key achievement two"],
-  },
-  {
-    id: "exp-4",
-    role: "Intern",
-    company: "Company Four",
-    period: "2019 — 2020",
-    location: "City",
-    summary: "Placeholder description of the role and the impact you had.",
-    highlights: ["Key achievement one"],
+    id: "freelance",
+    role: "Freelance Web Developer",
+    company: "Independent",
+    period: "2020 — Now",
+    url: null,
+    summary: "Websites and platforms for communities, agencies and businesses — from landing pages to full-stack apps.",
+    highlights: ["Client sites in React, Next.js, PHP and vanilla JS", "Discord bots with discord.js"],
   },
 ];
 
-export const projects = [
+/** Client statements. `about` links each to a project / job on the board. */
+export const witnesses = [
   {
-    id: "proj-1",
-    title: "Project Alpha",
-    year: "2026",
-    role: "Lead Developer",
-    image: null,
-    stack: ["Next.js", "WebGL", "GSAP"],
-    summary: "One-line pitch for the project.",
-    description:
-      "Placeholder case-study text. Describe the problem, your approach, and the outcome. Mention numbers if you have them.",
-    link: "https://example.com",
+    id: "jbablestime",
+    name: "Jbablestime",
+    role: "Owner",
+    org: "Ghast.io",
+    about: "ghast",
+    statement:
+      "Working with Antinity on the Ghast.io project was awesome — super fast, efficient, and nailed the final product perfectly. Definitely raised the whole game.",
   },
   {
-    id: "proj-2",
-    title: "Project Bravo",
-    year: "2025",
-    role: "Full-stack",
-    image: null,
-    stack: ["React", "Node", "PostgreSQL"],
-    summary: "One-line pitch for the project.",
-    description:
-      "Placeholder case-study text. Describe the problem, your approach, and the outcome. Mention numbers if you have them.",
-    link: "https://example.com",
+    id: "nsrd",
+    name: "NSRD",
+    role: "Owner",
+    org: "Minemen Tier List",
+    about: "mtl",
+    statement:
+      "I ordered a website for my discord server from Antinity, and I was very impressed with the quality of the work. The website was delivered in a week and was exactly what I wanted. Antinity was also very responsive to my feedback and made changes as needed. I would definitely recommend.",
   },
   {
-    id: "proj-3",
-    title: "Project Charlie",
-    year: "2024",
-    role: "Design & Dev",
-    image: null,
-    stack: ["Svelte", "Three.js"],
-    summary: "One-line pitch for the project.",
-    description:
-      "Placeholder case-study text. Describe the problem, your approach, and the outcome. Mention numbers if you have them.",
-    link: "https://example.com",
-  },
-  {
-    id: "proj-4",
-    title: "Project Delta",
-    year: "2023",
-    role: "Frontend",
-    image: null,
-    stack: ["TypeScript", "Tailwind"],
-    summary: "One-line pitch for the project.",
-    description:
-      "Placeholder case-study text. Describe the problem, your approach, and the outcome. Mention numbers if you have them.",
-    link: "https://example.com",
+    id: "zackaria",
+    name: "Zackaria",
+    role: "Owner",
+    org: "Bridger Land",
+    about: null,
+    statement:
+      "Antinity helped me setup a website for my Minecraft server, quickly and smoothly. He also helped fix an unrelated issue where users weren't receiving confirmation emails upon signing up. I would recommend working with him!",
   },
 ];
 
-export const skills = [
-  { group: "Languages", items: ["JavaScript", "TypeScript", "Python", "GLSL"] },
-  { group: "Frontend", items: ["React", "Next.js", "CSS / Motion", "WebGL"] },
-  { group: "Backend", items: ["Node.js", "PostgreSQL", "REST / GraphQL"] },
-  { group: "Tools", items: ["Figma", "Git", "Docker", "Vercel"] },
-];
-
-export const education = [
-  {
-    id: "edu-1",
-    title: "B.Sc. Computer Science",
-    institution: "University Name",
-    period: "2016 — 2020",
-    note: "Placeholder note — thesis, honours, focus area.",
-  },
-  {
-    id: "edu-2",
-    title: "Certification Name",
-    institution: "Issuing Organisation",
-    period: "2023",
-    note: "Placeholder note about the certification.",
-  },
+export const stack = [
+  { group: "Languages", items: ["HTML", "CSS", "JavaScript", "TypeScript", "PHP", "Python", "C++"] },
+  { group: "Frameworks", items: ["Next.js", "React", "Electron", "Laravel", "Express", "Tailwind", "discord.js"] },
+  { group: "Data", items: ["Supabase", "MongoDB", "PostgreSQL", "Redis"] },
+  { group: "Tools", items: ["VS Code", "Git", "Photoshop", "Premiere Pro", "After Effects", "Figma", "Notion", "Blender"] },
 ];
 
 export const contact = {
-  email: "hello@example.com",
-  phone: "+00 000 000 0000",
-  location: "City, Country",
-  availability: "Open to freelance & full-time roles",
-  note: "Have a lead? Leave a message and I will get back to you within 48 hours.",
+  email: "antinityfx@gmail.com",
+  note: "Let's work together!",
+  timezone: "IST (GMT+05:30)",
 };
 
 export const socials = [
-  { id: "github", label: "GitHub", handle: "@username", url: "https://github.com/" },
-  { id: "linkedin", label: "LinkedIn", handle: "in/username", url: "https://www.linkedin.com/" },
-  { id: "instagram", label: "Instagram", handle: "@username", url: "https://www.instagram.com/" },
-  { id: "x", label: "X / Twitter", handle: "@username", url: "https://x.com/" },
+  { id: "github", label: "GitHub", handle: "Antinity", url: "https://github.com/antinity" },
+  { id: "discord", label: "Discord", handle: "antinity", url: "https://discord.com/users/255322229062107136" },
+  { id: "server", label: "Discord server", handle: "discord.gg/SaHkUuWc2K", url: "https://discord.gg/SaHkUuWc2K" },
+  { id: "x", label: "X", handle: "@antinityfx", url: "https://x.com/antinityfx" },
 ];

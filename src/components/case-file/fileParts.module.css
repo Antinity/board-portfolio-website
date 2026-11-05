@@ -120,3 +120,43 @@
 .prose > * + * {
   margin-top: 12px;
 }
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 170px) 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.photo {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 8px solid #f4f2ec;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.3);
+  filter: sepia(0.25) contrast(1.05);
+}
+
+.shot {
+  display: block;
+  width: 100%;
+  margin: 6px 0 14px;
+  border: 8px solid #f5f3ee;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.25);
+}
+
+.quote {
+  font-size: 15px;
+  line-height: 1.7;
+  padding-left: 14px;
+  border-left: 3px solid var(--ink-red);
+}
+
+@media (width < 520px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .photo {
+    max-width: 180px;
+  }
+}

@@ -1,9 +1,11 @@
-# Investigation Board Portfolio
+# Antinity — Investigation Board Portfolio
 
-A portfolio presented as a detective's evidence board: drag to explore, scroll / pinch to zoom,
-click a cluster of evidence to fly to it and open its case file. A hand-held flashlight lights the
-room (press **F** to toggle room lights; **1–7** jump to exhibits; **Esc** closes; **← / →** move
-between files).
+Lakshya Kumar's portfolio as a 3D evidence board in a dark room. A hand-held torch lights the
+board; click any cluster of evidence to fly to it and open its case file.
+
+- **Drag** to pan · **scroll / pinch** to zoom · **click** a section to open it
+- **1–7** jump to an exhibit · **← / →** step through · **Esc** closes · **F** toggles the torch
+- `?fx=high | low | off` forces the post-processing quality (auto-detected otherwise)
 
 ```bash
 npm run dev
@@ -11,38 +13,44 @@ npm run dev
 
 ## Where to edit
 
-| What                          | File                                    |
-| ----------------------------- | --------------------------------------- |
-| All your info (placeholders)  | `src/data/content.js`                   |
-| Section positions on board    | `src/data/boardLayout.js`               |
-| How a section looks / expands | `src/sections/<section>.jsx`            |
-| Flashlight feel (tunables)    | `CONFIG` in `src/components/flashlight/Flashlight.jsx` |
+| What                                   | File                                         |
+| -------------------------------------- | -------------------------------------------- |
+| Everything the board says about you    | `src/data/content.js`                        |
+| What's pinned where + red strings      | `src/data/boardLayout.js`                    |
+| How a piece of evidence is drawn       | `src/three/painters/*`                       |
+| Expanded case-file content             | `src/sections/files.jsx`                     |
+| Torch feel (size, brightness, weight)  | `TORCH` in `src/three/scene/Flashlight.jsx`  |
+| Post-processing strengths              | `src/three/scene/PostFX.jsx`                 |
 
-Images: set any `image` field in `content.js` to a path in `/public`; otherwise a generated
-placeholder photo is shown.
+Images live in `public/evidence/`.
 
-## Structure
+## How it works
 
 ```
 src/
-  data/            content + board geometry (no UI)
-  sections/        one module per exhibit: <Evidence> (on the board) + <File> (expanded view)
-  components/
-    evidence/      reusable board primitives: BoardItem, Pin, Tape, Polaroid, StickyNote,
-                   Paper, IndexCard, Clipping, Blueprint, Stamp, Snapshot...
-    board/         Board (camera + surface), Cluster, CaseCard, RedStrings
-    case-file/     sliding manila-folder panel + FileParts (blocks for expanded content)
-    flashlight/    canvas darkness + beam, film grain
-    hud/           title, exhibit index, zoom / light controls
-  hooks/
-    useBoardCamera.js   pan / zoom / pinch / inertia / animated focus
-  lib/panel.js     side-panel width shared by camera framing and CSS
+  data/
+    content.js        facts (subject, projects, to-dos, experience, witnesses, stack, contact)
+    boardLayout.js    SECTIONS (click areas), ITEMS (each paper/photo), LINKS (red strings)
+  three/
+    Experience.jsx    <Canvas>: board, items, strings, targets, torch, camera, post FX
+    painters/         canvas-2D painters → textures (dossier, print, todo, crew sheet, flyer…)
+    scene/
+      BoardSurface    cork (procedural texture + bump) in an aluminium frame
+      Item            curled paper mesh + pins / tape
+      RedStrings      sagging yarn between two specific items, pinned at both ends
+      SectionTargets  invisible click areas + animated red marker loop on hover
+      Flashlight      shadow-casting spotlight through a damaged-lens cookie texture
+      CameraRig       cover-fit camera, drag / wheel / pinch, flights to sections
+      PostFX          SSAO, depth of field, bloom, motion blur, lens distortion, grain
+    effects/          custom motion-blur + lens (barrel + chromatic aberration) effects
+  sections/           case-file panel content per section
+  components/         app shell + case-file panel (HTML, accessible)
 ```
 
-### Adding a section
+### Adding evidence
 
-1. Add an entry to `SECTION_LAYOUT` in `src/data/boardLayout.js` (id, exhibit letter, title,
-   bounds, string anchor).
-2. Create `src/sections/<id>.jsx` exporting `XEvidence` and `XFile`, built from the
-   `components/evidence` primitives and `components/case-file/FileParts`.
-3. Register both in `src/sections/index.js`.
+1. Add the facts to `content.js`.
+2. Add an item to `ITEMS` in `boardLayout.js` (`kind` picks a painter; positions are in board
+   pixels on a 2400 × 1400 cork).
+3. Connect it with a `LINKS` entry if it relates to something else on the board.
+4. New look? Add a painter in `src/three/painters` and register it in `painters/index.js`.

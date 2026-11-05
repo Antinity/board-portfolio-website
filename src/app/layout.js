@@ -1,5 +1,5 @@
 import { Caveat, Oswald, Permanent_Marker, Special_Elite } from "next/font/google";
-import { caseInfo } from "@/data/content";
+import { subject } from "@/data/content";
 import "./globals.css";
 
 const typewriter = Special_Elite({ variable: "--font-type", weight: "400", subsets: ["latin"] });
@@ -8,8 +8,8 @@ const hand = Caveat({ variable: "--font-hand", subsets: ["latin"] });
 const display = Oswald({ variable: "--font-display", subsets: ["latin"] });
 
 export const metadata = {
-  title: `${caseInfo.name} — Case File № ${caseInfo.caseNumber}`,
-  description: `${caseInfo.name}, ${caseInfo.title}. Open the case file to explore projects, experience and contact details.`,
+  title: `${subject.name} (${subject.alias}) — Case File`,
+  description: `${subject.name} — ${subject.role} from ${subject.origin}. Investigate the board to explore projects, experience and contact details.`,
 };
 
 export const viewport = {

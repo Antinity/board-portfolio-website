@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { caseInfo } from "@/data/content";
-import { Stamp } from "@/components/evidence";
+import { subject } from "@/data/content";
 import styles from "./caseFile.module.css";
 
 /**
@@ -35,7 +34,13 @@ export default function CaseFile({ section, onClose, onPrev, onNext }) {
   const File = section?.File;
 
   return (
-    <aside className={styles.panel} data-open={open || undefined} aria-hidden={!open} aria-label={section ? `Exhibit ${section.exhibit}: ${section.title}` : undefined} inert={!open}>
+    <aside
+      className={styles.panel}
+      data-open={open || undefined}
+      aria-hidden={!open}
+      aria-label={section ? `Exhibit ${section.exhibit}: ${section.title}` : undefined}
+      inert={!open}
+    >
       <div className={styles.tab}>
         {section && (
           <>
@@ -49,11 +54,11 @@ export default function CaseFile({ section, onClose, onPrev, onNext }) {
           <header className={styles.header}>
             <div>
               <div className={styles.caseNo}>
-                Case № {caseInfo.caseNumber} · Exhibit {section?.exhibit}
+                Case: {subject.alias} · Exhibit {section?.exhibit}
               </div>
               <h2 className={styles.title}>{section?.title}</h2>
             </div>
-            <Stamp rotate={8}>Confidential</Stamp>
+            <span className={styles.stamp}>Confidential</span>
           </header>
 
           <div className={styles.body}>{File && <File />}</div>
