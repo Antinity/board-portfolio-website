@@ -10,10 +10,12 @@ import { loading } from "../loading";
 const TORCH = {
   color: "#d4e4ff", // cool LED white-blue
   intensity: 1.55, // overall brightness (the board is white, so it needs less)
-  radius: 12.2, // cone radius on the board, world units (bright disc ≈ 46% of it, faint spill beyond) — constant at every zoom
+  radius: 12.2, // cone radius on the board, world units (bright disc ≈ 46% of it, faint spill beyond) — constant at every zoom; phones use rig.torchRadius
   minThrow: 20, // the torch is never closer to the board than this (keeps the cone narrow)
   hold: new Vector3(0.35, -0.5, 0), // offset from the eye, world units
   smoothTime: 0.055, // seconds to catch up with the pointer (it *is* the cursor)
+  touchSmoothTime: 0.08, // …with a finger on the screen
+  carrySmoothTime: 0.4, // …when held ahead on a phone: it trails the board like a torch carried while walking
   maxSpeed: 80, // world units / second
   sway: 0.03, // hand wobble, world units
   flickerChance: 0.04, // flickers per second
@@ -40,7 +42,7 @@ function smoothDamp(current, target, velocity, smoothTime, maxSpeed, dt) {
  * spotlight projecting the beam pattern, aimed at the pointer. While a page
  * is being read it holds still on that page.
  */
-export default function Flashlight({ rig, on = true }) {
+export default function Flashlight({ rig, on = true, quality = "high" }) {
   const { camera } = useThree();
   const light = useRef(null);
   const target = useMemo(() => new Object3D(), []);
@@ -76,7 +78,14 @@ export default function Flashlight({ rig, on = true }) {
       toBoard.multiplyScalar(-camera.position.z / toBoard.z).add(camera.position);
       goal = toBoard;
     }
-    smoothDamp(rig.aim, goal, s.vel, rig.reading ? 0.35 : TORCH.smoothTime, TORCH.maxSpeed, dt);
+    const smoothTime = rig.reading
+      ? 0.35
+      : rig.input === "touch"
+        ? rig.touching
+          ? TORCH.touchSmoothTime
+          : TORCH.carrySmoothTime
+        : TORCH.smoothTime;
+    smoothDamp(rig.aim, goal, s.vel, smoothTime, TORCH.maxSpeed, dt);
     const sway = calm ? 0 : TORCH.sway;
     target.position.set(
       rig.aim.x + (Math.sin(t * 1.3) * 0.6 + Math.sin(t * 0.47 + 1.2) * 0.9) * sway,
@@ -97,7 +106,7 @@ export default function Flashlight({ rig, on = true }) {
 
     // constant beam size on the board at any zoom
     const throwDist = l.position.distanceTo(target.position);
-    l.angle = Math.atan(TORCH.radius / throwDist);
+    l.angle = Math.atan((rig.torchRadius || TORCH.radius) / throwDist);
     l.shadow.camera.near = Math.max(0.5, throwDist * 0.3);
     l.shadow.camera.far = throwDist * 1.6;
 
@@ -121,7 +130,7 @@ export default function Flashlight({ rig, on = true }) {
         decay={0}
         penumbra={0.04}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={quality === "low" ? [1024, 1024] : [2048, 2048]}
         shadow-bias={-0.0003}
         shadow-normalBias={0.02}
       />

@@ -17,6 +17,8 @@ import Moonlight from "./scene/Moonlight";
 import Lamp from "./scene/Lamp";
 import ReadingSpin from "./scene/ReadingSpin";
 import LoadingGate from "./scene/LoadingGate";
+import TorchFocus from "./scene/TorchFocus";
+import AdaptiveResolution from "./scene/AdaptiveResolution";
 
 /**
  * The 3D board: whiteboard + frame, every item, red strings, the torch,
@@ -36,17 +38,19 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
 
   // Client-only component (loaded with ssr: false), so window is available here.
   // Override with ?fx=high | low | off.
-  const [quality] = useState(() => {
+  const [{ quality, coarse }] = useState(() => {
+    const touch = window.matchMedia("(pointer: coarse)").matches;
     const forced = new URLSearchParams(window.location.search).get("fx");
-    if (["high", "low", "off"].includes(forced)) return forced;
-    return window.innerWidth < 700 || navigator.hardwareConcurrency <= 4 ? "low" : "high";
+    if (["high", "low", "off"].includes(forced)) return { quality: forced, coarse: touch };
+    // phones and tablets always get the lighter chain, whatever their size
+    return { quality: touch || window.innerWidth < 700 || navigator.hardwareConcurrency <= 4 ? "low" : "high", coarse: touch };
   });
 
   return (
     <Canvas
       shadows
       flat
-      dpr={[1, quality === "high" ? 1.5 : 1.25]}
+      dpr={coarse ? [1, 2] : [1, quality === "high" ? 1.5 : 1.25]}
       camera={{ fov: 32, near: 0.3, far: 300, position: [0, 0, 34] }}
       gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
@@ -72,8 +76,10 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       <ReadingBackdrop rig={rig} readingId={readingId} onClose={onClose} />
       <ReadingSpin rig={rig} readingId={readingId} />
 
-      <Flashlight rig={rig} on={torchOn} />
+      <Flashlight rig={rig} on={torchOn} quality={quality} />
+      <TorchFocus rig={rig} />
       <CameraRig rig={rig} />
+      {coarse && <AdaptiveResolution />}
       {quality !== "off" && <PostFX rig={rig} quality={quality} />}
     </Canvas>
   );

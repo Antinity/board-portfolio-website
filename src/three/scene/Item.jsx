@@ -160,7 +160,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     // red marker loop: drawn quickly on hover, wiped from its start on leave
     if (loop) {
-      const want = s.hovered && !rig.reading;
+      const want = (s.hovered || rig.focus === item.id) && !rig.reading;
       s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
       const n = loop.index.count;
       const p = easeOutCubic(s.circle);
@@ -197,8 +197,9 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     const k = damp(8, dt);
     s.yaw += ((selected ? rig.spin.yaw : 0) - s.yaw) * k;
     s.pitch += ((selected ? rig.spin.pitch : 0) - s.pitch) * k;
-    s.tiltX += ((selected ? -rig.pointer.y * READ_TILT.x : 0) - s.tiltX) * damp(5, dt);
-    s.tiltY += ((selected ? rig.pointer.x * READ_TILT.y : 0) - s.tiltY) * damp(5, dt);
+    const tilts = selected && rig.input === "mouse"; // a finger has no hover to tilt toward
+    s.tiltX += ((tilts ? -rig.pointer.y * READ_TILT.x : 0) - s.tiltX) * damp(5, dt);
+    s.tiltY += ((tilts ? rig.pointer.x * READ_TILT.y : 0) - s.tiltY) * damp(5, dt);
     turnQuat.setFromEuler(turnEuler.set(s.pitch + s.tiltX, s.yaw + s.tiltY, 0));
     tmp.quat.copy(camera.quaternion).multiply(TILT).multiply(turnQuat);
 
@@ -235,7 +236,8 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       : {
           onPointerOver: (e) => {
             e.stopPropagation();
-            if (!rig.reading) state.current.hovered = true;
+            // only a mouse hovers; a touch must not leave a loop stuck on the last thing tapped
+            if (!rig.reading && e.pointerType === "mouse") state.current.hovered = true;
           },
           onPointerOut: () => {
             state.current.hovered = false;
@@ -249,12 +251,12 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           onClick: (e) => {
             e.stopPropagation();
             if (selected) {
-              if (rig.dragging) return;
+              if (rig.dragging || performance.now() < rig.suppressClickUntil) return;
               const link = linkAt(item, painted.links, e.uv);
               if (link) openLink(link.href);
               return;
             }
-            if (rig.dragging || rig.reading) return;
+            if (rig.dragging || rig.reading || performance.now() < rig.suppressClickUntil) return;
             if (action === "link") return openLink(item.props.social.url);
             if (action === "copy") return copyEmail();
             state.current.hovered = false;

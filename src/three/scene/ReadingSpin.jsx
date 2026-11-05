@@ -43,6 +43,7 @@ export default function ReadingSpin({ rig, readingId }) {
     };
     const onUp = (e) => {
       if (!drag || e.pointerId !== drag.id) return;
+      if (drag.moved) rig.suppressClickUntil = performance.now() + 350;
       drag = null;
       rig.spin.yaw = Math.round(rig.spin.yaw / (Math.PI * 2)) * Math.PI * 2;
       rig.spin.pitch = 0;

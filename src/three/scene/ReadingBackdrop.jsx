@@ -43,7 +43,7 @@ export default function ReadingBackdrop({ rig, readingId, onClose }) {
       visible={false}
       renderOrder={1}
       onClick={(e) => {
-        if (!rig.reading || rig.readT < 0.6 || rig.dragging) return; // a spin-drag is not a click
+        if (!rig.reading || rig.readT < 0.6 || rig.dragging || performance.now() < rig.suppressClickUntil) return; // a spin-drag is not a click
         e.stopPropagation();
         onClose();
       }}
