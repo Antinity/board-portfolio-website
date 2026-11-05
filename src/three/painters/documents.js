@@ -1,6 +1,6 @@
 import { subject, witnesses } from "@/data/content";
 import { makeCanvas } from "../textures/procedural";
-import { INK, coffeeRing, font, paperBase, wrapLines, wrapText } from "./common";
+import { INK, font, paperBase, wrapLines, wrapText } from "./common";
 import { markerLine, markerStroke, markerText } from "./marker";
 
 /* Paper documents and writing on the board. */
@@ -14,7 +14,6 @@ const MAX_SCALE = 1.9;
 export const profile = {
   paint(ctx, { w, h }, { fonts, r }) {
     paperBase(ctx, w, h, { color: "#eeebe3", r, shade: 0.14 });
-    coffeeRing(ctx, w * 0.84, h * 0.93, 38, r);
     const pad = 34;
     const inner = w - pad * 2;
     const half = (inner - 24) / 2;

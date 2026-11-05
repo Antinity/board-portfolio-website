@@ -214,15 +214,12 @@ export const contact = {
 };
 
 /**
- * Socials. `icon` socials get a printed paper icon on the board that links
- * straight to the profile; a null `url` is not clickable yet.
- * TODO: fill in Instagram, LinkedIn and WhatsApp.
+ * Socials. `icon` socials are drawn on the board in marker and link straight
+ * to the profile. Instagram and WhatsApp are left out until there are links.
  */
 export const socials = [
   { id: "x", label: "X", handle: "@antinityfx", url: "https://x.com/antinityfx", icon: true },
-  { id: "instagram", label: "Instagram", handle: "TODO", url: null, icon: true },
-  { id: "linkedin", label: "LinkedIn", handle: "TODO", url: null, icon: true },
-  { id: "whatsapp", label: "WhatsApp", handle: "TODO", url: null, icon: true },
+  { id: "linkedin", label: "LinkedIn", handle: "Lakshya Kumar", url: "https://www.linkedin.com/in/lakshya-kumar-594253314/", icon: true },
   { id: "github", label: "GitHub", handle: "Antinity", url: "https://github.com/antinity", icon: true },
   { id: "discord", label: "Discord", handle: "antinity", url: "https://discord.com/users/255322229062107136" },
 ];

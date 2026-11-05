@@ -13,8 +13,10 @@
  * "link" (open `props.social.url`), "copy" (copy the email address),
  * "ink" (open a link written on the board), "none".
  *
- *   To do    |  The subject  |  The jobs (3 x 3)
+ *   To do    |  About me     |  The jobs (3 x 3)
  *   Skills   |  Contact      |  What people say
+ *
+ * The subject has no heading: the About me page and photo are the centrepiece.
  */
 
 import { operations, socials, stack, witnesses, works } from "./content";
@@ -60,7 +62,7 @@ const spread = (span, n, w) => {
 const PRINT_W = 270;
 const PRINT_H = Math.round(PRINT_W * 0.706 + 105);
 const PRINT_PITCH = PRINT_H + 12; // the jobs sit close together
-const ICON_W = 118;
+const ICON_W = 140;
 const iconSocials = socials.filter((s) => s.icon);
 const SAY_W = 280;
 
@@ -86,24 +88,25 @@ export const ITEMS = [
     props: { group },
   })),
 
-  // ---------- Centre: the subject ----------
-  heading("subject", COL.b, 24),
-  { id: "subject-profile", section: "subject", kind: "profile", x: 1325, y: 130, w: 455, h: 700, rot: 0.5, z: 1, fasten: "pins" },
-  { id: "subject-photo", section: "subject", kind: "polaroid", x: 1000, y: 203, w: 290, h: 348, rot: -3, z: 2 },
+  // ---------- Centre: the subject (no heading) ----------
+  { id: "subject-profile", section: "subject", kind: "profile", x: 1325, y: 60, w: 455, h: 780, rot: 0.5, z: 1, fasten: "pins" },
+  { id: "subject-photo", section: "subject", kind: "polaroid", x: 995, y: 130, w: 305, h: 366, rot: -3, z: 2 },
 
   // ---------- Centre: contact ----------
-  heading("contact", COL.b, 846),
-  { id: "contact-email", section: "contact", kind: "emailslip", x: 1015, y: 960, w: 740, h: 150, rot: -0.4, z: 1, fasten: "tape", action: "copy" },
+  heading("contact", COL.b, 868),
+  { id: "contact-email", section: "contact", kind: "emailslip", x: 1015, y: 980, w: 740, h: 150, rot: 0, z: 1, ink: true, fasten: "none", action: "copy" },
   ...iconSocials.map((social, i) => ({
     id: `social-${social.id}`,
     section: "contact",
     kind: "social",
     x: spread(COL.b, iconSocials.length, ICON_W)[i],
-    y: 1164,
+    y: 1160,
     w: ICON_W,
     h: ICON_W,
-    rot: [-3, 2, -1.5, 3, -2][i % 5],
+    rot: 0,
     z: 1,
+    ink: true,
+    fasten: "none",
     action: social.url ? "link" : "none",
     props: { social },
   })),
@@ -147,8 +150,6 @@ export const ITEMS = [
 export const LINKS = [
   // the Minemen community: tier list <-> tier tests
   { from: { item: "job-mtl", at: [0.94, 0.3] }, to: { item: "job-mtt", at: [0.06, 0.3] } },
-  // the suspect <-> how to reach him
-  { from: { item: "subject-profile", at: [0.88, 0.97] }, to: { item: "contact-email", at: [0.92, 0.1] } },
 ];
 export const itemById = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
@@ -159,7 +160,7 @@ export const actionOf = (item) => item.action ?? "read";
 export const READABLE = ITEMS.filter((i) => actionOf(i) === "read");
 
 /** Writing on the board that carries content (read by screen readers, not picked up). */
-export const WRITTEN = ITEMS.filter((i) => i.ink && i.kind !== "label");
+export const WRITTEN = ITEMS.filter((i) => i.ink && ["todo", "tag"].includes(i.kind));
 
 /** Where the torch rests before the visitor moves the pointer. */
 export const HOME_ITEM = "subject-profile";

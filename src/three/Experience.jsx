@@ -19,6 +19,7 @@ import ReadingSpin from "./scene/ReadingSpin";
 import LoadingGate from "./scene/LoadingGate";
 import TorchFocus from "./scene/TorchFocus";
 import AdaptiveResolution from "./scene/AdaptiveResolution";
+import ClickGuard from "./scene/ClickGuard";
 
 /**
  * The 3D board: whiteboard + frame, every item, red strings, the torch,
@@ -78,6 +79,7 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
 
       <Flashlight rig={rig} on={torchOn} quality={quality} />
       <TorchFocus rig={rig} />
+      <ClickGuard rig={rig} />
       <CameraRig rig={rig} />
       {coarse && <AdaptiveResolution />}
       {quality !== "off" && <PostFX rig={rig} quality={quality} />}

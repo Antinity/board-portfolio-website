@@ -32,7 +32,7 @@ The portfolio itself is the proof of craft: a cinematic, game-quality WebGL expe
 
 - Next.js 16 (App Router) + React Three Fiber / three.js + postprocessing; content in `src/data/content.js`, layout in `src/data/boardLayout.js`.
 - Must stay performant on ordinary laptops (`?fx=low|off` fallbacks) and usable on phones.
-- Social links still to be supplied: Instagram, LinkedIn, WhatsApp (placeholders, marked TODO in content).
+- Socials on the board: X, LinkedIn and GitHub (drawn in marker, each linking straight out). Instagram and WhatsApp are left off until there are links.
 - Screenshots exist only for Nexora Visuals, Minemen Tier Tests, Minemen Tier List, Unipower, Rural Advertising & Marketing; other works need placeholders until images are provided.
 
 ## Brand Commitments

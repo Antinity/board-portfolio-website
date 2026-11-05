@@ -274,7 +274,10 @@ export default function CameraRig({ rig }) {
           }
         }
       }
-      if (g.moved || g.pinched || g.caught || rig.dragging) rig.suppressClickUntil = performance.now() + 350;
+      if (g.moved || g.pinched || g.caught || rig.dragging) {
+        rig.suppressClickUntil = performance.now() + 350;
+        rig.swallowClick = true;
+      }
       rig.dragging = false;
       g.moved = g.pinched = g.caught = false;
     };

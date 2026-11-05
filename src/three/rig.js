@@ -27,6 +27,8 @@ export function createRig(home = new Vector3()) {
     touching: false,
     /** clicks are ignored until this time (ms): the tail of a drag, pinch or glide-stop */
     suppressClickUntil: 0,
+    /** the next click belongs to a drag, pinch or glide-stop that just ended: swallow it */
+    swallowClick: false,
     /** id of the item the resting torch has settled on (touch only) */
     focus: null,
     /** camera speed on the board, world units / second */
@@ -43,6 +45,11 @@ export function createRig(home = new Vector3()) {
     readPoint: new Vector3(),
     /** how far the held page has been spun by dragging (radians) */
     spin: { yaw: 0, pitch: 0 },
+    /** zoom into the held page (1 = fits the screen) and where it has been panned to (NDC) */
+    readZoom: 1,
+    readPan: new Vector2(0, 0),
+    /** half the held page's size on screen at zoom 1, in NDC (set by the page being held) */
+    readHalf: new Vector2(0.8, 0.8),
   };
 }
 

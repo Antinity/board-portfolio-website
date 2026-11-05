@@ -96,13 +96,14 @@ function markerLoop(item) {
 }
 
 // dry-erase ink: slightly shiny, lying flat on whatever it is drawn over
+// it is drawn on top of everything near it (never hidden behind a neighbouring page, pin or string)
 const markerInk = new THREE.MeshStandardMaterial({
   color: "#b3161d",
   roughness: 0.42,
   side: THREE.DoubleSide,
-  polygonOffset: true,
-  polygonOffsetFactor: -2,
-  polygonOffsetUnits: -2,
+  transparent: true,
+  depthTest: false,
+  depthWrite: false,
 });
 
 /** Local position on the item for fraction `at` ([fx, fy], top-left origin). */
@@ -119,7 +120,15 @@ const FASTENERS = {
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
-const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
+const tmp = {
+  pos: new THREE.Vector3(),
+  quat: new THREE.Quaternion(),
+  fwd: new THREE.Vector3(),
+  right: new THREE.Vector3(),
+  up: new THREE.Vector3(),
+  off: new THREE.Vector3(),
+  base: new THREE.Vector3(),
+};
 const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
 const turnEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const turnQuat = new THREE.Quaternion();
@@ -165,7 +174,8 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const pinsRef = useRef(null);
   const tapePeel = useRef(null);
   const material = useRef(null);
-  const state = useRef({ t: 0, hovered: false, circle: 0, tiltX: 0, tiltY: 0, yaw: 0, pitch: 0 });
+  const loopMesh = useRef(null);
+  const state = useRef({ t: 0, hovered: false, circle: 0, tiltX: 0, tiltY: 0, yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 });
 
   useEffect(() => {
     let alive = true;
@@ -202,6 +212,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     // red marker loop: drawn quickly on hover, wiped from its start on leave
     if (loop) {
+      if (loopMesh.current) loopMesh.current.visible = !rig.reading; // never over a held page
       const want = (s.hovered || rig.focus === item.id) && !rig.reading;
       s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
       const n = loop.index.count;
@@ -229,10 +240,22 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     const scale = Math.min((readLayout.height * visH) / (item.h * UNIT), (readLayout.width * visW) / (item.w * UNIT));
     camera.getWorldDirection(tmp.fwd);
     tmp.right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    tmp.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
     tmp.pos
       .copy(camera.position)
       .addScaledVector(tmp.fwd, READ_DIST)
       .addScaledVector(tmp.right, readLayout.shift * visW);
+
+    // zoom into the held page and pan around it
+    const kz = damp(10, dt);
+    s.zoom += ((selected ? rig.readZoom : 1) - s.zoom) * kz;
+    s.panX += ((selected ? rig.readPan.x : 0) - s.panX) * kz;
+    s.panY += ((selected ? rig.readPan.y : 0) - s.panY) * kz;
+    if (selected) rig.readHalf.set((item.w * UNIT * scale) / visW, (item.h * UNIT * scale) / visH);
+    tmp.off
+      .copy(tmp.right)
+      .multiplyScalar((s.panX * visW) / 2)
+      .addScaledVector(tmp.up, (s.panY * visH) / 2);
 
     // held page: drag to spin it all the way round, plus a slight tilt
     // toward the pointer; it settles back to facing you when let go
@@ -247,8 +270,10 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     g.position.lerpVectors(board.pos, tmp.pos, e);
     g.position.z += Math.sin(e * Math.PI) * 0.45; // arc toward the viewer
+    const base = tmp.base.copy(g.position);
+    g.position.addScaledVector(tmp.off, e);
     g.quaternion.slerpQuaternions(board.quat, tmp.quat, e);
-    g.scale.setScalar(THREE.MathUtils.lerp(1, scale, e));
+    g.scale.setScalar(THREE.MathUtils.lerp(1, scale * s.zoom, e));
 
     if (pinsRef.current) {
       pinsRef.current.position.z = release * 0.22; // pulled out
@@ -260,7 +285,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     if (selected || s.t > 0.001) {
       rig.readT = e;
-      rig.readPoint.copy(g.position);
+      rig.readPoint.copy(base); // the torch and focus stay on the middle of the screen while the page is panned
     }
   });
 
@@ -339,7 +364,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           <meshStandardMaterial color="#e3e0d8" bumpMap={bump} bumpScale={0.9} roughness={0.97} side={THREE.BackSide} />
         </mesh>
       )}
-      {loop && <mesh geometry={loop} material={markerInk} />}
+      {loop && <mesh ref={loopMesh} geometry={loop} material={markerInk} renderOrder={10} />}
       <group ref={fasteners}>
         <group ref={pinsRef}>
           {pins.map((at) => (
