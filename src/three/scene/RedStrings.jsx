@@ -42,7 +42,7 @@ export default function RedStrings() {
           new THREE.Vector3(a.x + (b.x - a.x) * 0.7, a.y + (b.y - a.y) * 0.7 - len * 0.035, STRING_Z),
           new THREE.Vector3(b.x, b.y, b.z + 0.06)
         );
-        return { a, b, geometry: new THREE.TubeGeometry(curve, Math.max(24, Math.round(len * 6)), 0.013, 6) };
+        return { a, b, geometry: new THREE.TubeGeometry(curve, Math.max(32, Math.round(len * 10)), 0.013, 8) };
       }),
     []
   );

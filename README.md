@@ -1,11 +1,12 @@
 # Antinity — Investigation Board Portfolio
 
-Lakshya Kumar's portfolio as a 3D evidence board in a moonlit room. A hand-held torch lights the
-board; hover a document to highlight it, click to pick it up and read it — like the notes and
-letters in Resident Evil or The Last of Us.
+Lakshya Kumar's portfolio as a 3D evidence board in a moonlit room, laid out like a heist
+planning board. The torch is the cursor; hover a document to highlight it, click to pick it up
+and read it — like the notes and letters in Resident Evil or The Last of Us. Links printed on a
+page (sites, email, socials) are clickable while it's held up.
 
 - **Drag** to pan · **scroll / pinch** to zoom · **click** a document to read it
-- While reading: **← / →** previous / next document · **Esc** (or click outside) puts it back
+- While reading: **Esc** or click outside puts it back · **← / →** previous / next document
 - **F** toggles the torch
 - `?fx=high | low | off` forces the post-processing quality (auto-detected otherwise)
 
@@ -20,7 +21,7 @@ npm run dev
 | Everything the board says about you    | `src/data/content.js`                        |
 | What's pinned where + red strings      | `src/data/boardLayout.js`                    |
 | How a piece of evidence is drawn       | `src/three/painters/*`                       |
-| Reading-view transcripts               | `src/reading/transcripts.jsx`                |
+| Screen-reader transcripts              | `src/reading/transcripts.jsx`                |
 | Torch feel (size, brightness, weight)  | `TORCH` in `src/three/scene/Flashlight.jsx`  |
 | Post-processing strengths              | `src/three/scene/PostFX.jsx`                 |
 
@@ -45,7 +46,7 @@ src/
       CameraRig       cover-fit camera, drag / wheel / pinch, intro on the subject
       PostFX          SSAO, depth of field, bloom, motion blur, lens distortion, grain
     effects/          custom motion-blur + lens (barrel + chromatic aberration) effects
-  reading/            transcript + controls shown beside a page being read (HTML)
+  reading/            keyboard handling + screen-reader transcripts for the reading view
   components/         app shell
 ```
 
@@ -53,7 +54,7 @@ src/
 
 1. Add the facts to `content.js`.
 2. Add an item to `ITEMS` in `boardLayout.js` (`kind` picks a painter and a transcript;
-   positions are in board pixels on a 2800 × 1600 cork).
+   positions are in board pixels on a 2800 × 1560 cork, laid out on the `COL` / `ROW` grid).
 3. Connect it with a `LINKS` entry if it relates to something else on the board.
 4. New kind? Add a painter in `src/three/painters` (register it in `painters/index.js`) and a
    transcript in `src/reading/transcripts.jsx`.

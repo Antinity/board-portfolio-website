@@ -14,9 +14,15 @@ export default function ReadingBackdrop({ rig, readingId, onClose }) {
   const mesh = useRef(null);
   const mat = useRef(null);
 
-  // Let the camera, torch and items know a page is being read.
+  // Let the camera, torch and items know a page is being read; the system
+  // cursor reappears while reading (the torch is the cursor otherwise).
   useEffect(() => {
     rig.reading = readingId;
+    if (readingId) document.body.dataset.reading = "";
+    else {
+      delete document.body.dataset.reading;
+      document.body.style.cursor = "";
+    }
   }, [rig, readingId]);
 
   useFrame(({ camera }) => {

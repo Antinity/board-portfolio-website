@@ -30,7 +30,7 @@ function useCorkGeometryColors(segX, segY) {
 
 /** Cork board in an aluminium frame with dark plastic corner caps, on a grimy wall. */
 export default function BoardSurface() {
-  const cork = useMemo(() => corkTextures([BOARD_W / 2.4, BOARD_H / 2.4]), []);
+  const cork = useMemo(() => corkTextures([BOARD_W / 4, BOARD_H / 4]), []);
   const colors = useCorkGeometryColors(48, 28);
 
   const outerW = BOARD_W + RAIL * 2;

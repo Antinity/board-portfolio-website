@@ -13,30 +13,7 @@ import Flashlight from "./scene/Flashlight";
 import CameraRig from "./scene/CameraRig";
 import ReadingBackdrop from "./scene/ReadingBackdrop";
 import PostFX from "./scene/PostFX";
-
-/** Cold light through a high window: everything stays faintly visible. */
-function Moonlight() {
-  return (
-    <>
-      <hemisphereLight args={["#4a5878", "#120e0a", 0.16]} />
-      <directionalLight
-        color="#9fb4e8"
-        intensity={0.55}
-        position={[-14, 12, 16]}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0005}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-16}
-        shadow-camera-right={16}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
-        shadow-camera-near={1}
-        shadow-camera-far={60}
-      />
-    </>
-  );
-}
+import Moonlight from "./scene/Moonlight";
 
 /**
  * The 3D board: cork + frame, every item, red strings, torch, moonlight,
@@ -72,7 +49,7 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
     >
       <color attach="background" args={["#050505"]} />
-      <Moonlight />
+      <Moonlight rig={rig} />
 
       <BoardSurface />
       {ITEMS.map((item) => (

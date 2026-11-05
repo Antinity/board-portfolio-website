@@ -3,18 +3,22 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Object3D, Vector3 } from "three";
-import { damagedGlassCookie } from "../textures/procedural";
+import { torchCookie } from "../textures/procedural";
 
 /** Tunables for the feel of the torch. */
 const TORCH = {
-  intensity: 3.1, // overall brightness
-  radius: 6.2, // beam radius on the board, world units — constant at every zoom
-  hold: new Vector3(0.12, -0.16, 0), // where the hand holds it, × camera distance
-  smoothTime: 0.16, // seconds for the aim to catch up (higher = heavier torch)
-  maxSpeed: 26, // world units / second the aim can travel
-  sway: 0.16, // hand wobble, world units
-  flickerChance: 0.05, // flickers per second
+  color: "#d4e4ff", // cool LED white-blue
+  intensity: 2.6, // overall brightness
+  radius: 5.6, // beam radius on the board, world units — constant at every zoom
+  minThrow: 13, // the torch is never closer to the board than this (keeps the cone narrow)
+  hold: new Vector3(0.35, -0.5, 0), // offset from the eye, world units
+  smoothTime: 0.055, // seconds to catch up with the pointer (it *is* the cursor)
+  maxSpeed: 80, // world units / second
+  sway: 0.03, // hand wobble, world units
+  flickerChance: 0.04, // flickers per second
 };
+
+const toBoard = new Vector3();
 
 /** Critically-damped spring toward `target` (Unity-style SmoothDamp). */
 function smoothDamp(current, target, velocity, smoothTime, maxSpeed, dt) {
@@ -31,14 +35,15 @@ function smoothDamp(current, target, velocity, smoothTime, maxSpeed, dt) {
 }
 
 /**
- * A hand-held torch: a shadow-casting spotlight shining through a scratched,
- * cracked lens (the cookie texture), aimed wherever the pointer is.
+ * The hand-held torch, which doubles as the cursor: a shadow-casting
+ * spotlight projecting the beam pattern, aimed at the pointer. While a page
+ * is being read it holds still on that page.
  */
 export default function Flashlight({ rig, on = true }) {
   const { camera } = useThree();
   const light = useRef(null);
   const target = useMemo(() => new Object3D(), []);
-  const cookie = useMemo(() => damagedGlassCookie(), []);
+  const cookie = useMemo(() => torchCookie(), []);
   const state = useRef({ vel: new Vector3(), power: 0, flickerUntil: 0, bootAt: Infinity });
   const reduceMotion = useRef(false);
 
@@ -55,11 +60,16 @@ export default function Flashlight({ rig, on = true }) {
     const dt = Math.min(rawDt, 0.05);
     const s = state.current;
     const t = clock.elapsedTime;
-    const dist = camera.position.z;
     const calm = reduceMotion.current;
 
-    // aim: heavy, smooth follow (no beam stretching)
-    smoothDamp(rig.aim, rig.cursor, s.vel, calm ? 0.05 : TORCH.smoothTime, TORCH.maxSpeed, dt);
+    // where to point: the cursor — or, while reading, the board behind the page
+    let goal = rig.cursor;
+    if (rig.reading && rig.readT > 0.01) {
+      toBoard.subVectors(rig.readPoint, camera.position);
+      toBoard.multiplyScalar(-camera.position.z / toBoard.z).add(camera.position);
+      goal = toBoard;
+    }
+    smoothDamp(rig.aim, goal, s.vel, rig.reading ? 0.35 : TORCH.smoothTime, TORCH.maxSpeed, dt);
     const sway = calm ? 0 : TORCH.sway;
     target.position.set(
       rig.aim.x + (Math.sin(t * 1.3) * 0.6 + Math.sin(t * 0.47 + 1.2) * 0.9) * sway,
@@ -68,24 +78,26 @@ export default function Flashlight({ rig, on = true }) {
     );
     target.updateMatrixWorld();
 
-    // held slightly below and to the right of the eye
+    // held near the eye, but never so close that the cone has to splay wide
     l.position.set(
-      camera.position.x + TORCH.hold.x * dist,
-      camera.position.y + TORCH.hold.y * dist,
-      camera.position.z * 0.98
+      camera.position.x + TORCH.hold.x,
+      camera.position.y + TORCH.hold.y,
+      Math.max(camera.position.z, TORCH.minThrow)
     );
 
-    // beam keeps a constant size on the board: zooming in doesn't shrink it
-    l.angle = Math.min(Math.atan(TORCH.radius / l.position.distanceTo(target.position)), 1.45);
-    l.shadow.camera.far = dist * 2;
+    // constant beam size on the board at any zoom
+    const throwDist = l.position.distanceTo(target.position);
+    l.angle = Math.atan(TORCH.radius / throwDist);
+    l.shadow.camera.near = Math.max(0.5, throwDist * 0.3);
+    l.shadow.camera.far = throwDist * 1.6;
 
     // power: boot-up stutter, on/off fade, random flicker
     const now = performance.now();
     const wanted = on && now > s.bootAt ? 1 : 0;
     s.power += (wanted - s.power) * (1 - Math.exp(-dt * (wanted ? 5 : 8)));
-    if (!calm && on && Math.random() < dt * TORCH.flickerChance) s.flickerUntil = now + 80 + Math.random() * 240;
+    if (!calm && on && Math.random() < dt * TORCH.flickerChance) s.flickerUntil = now + 70 + Math.random() * 180;
     const booting = now > s.bootAt && now < s.bootAt + 450;
-    const flicker = now < s.flickerUntil || booting ? 0.35 + Math.random() * 0.65 : 1;
+    const flicker = now < s.flickerUntil || booting ? 0.45 + Math.random() * 0.55 : 1;
     l.intensity = TORCH.intensity * s.power * flicker;
   });
 
@@ -95,14 +107,13 @@ export default function Flashlight({ rig, on = true }) {
       <spotLight
         ref={light}
         map={cookie}
-        color="#fff1dc"
+        color={TORCH.color}
         decay={0}
-        penumbra={0}
+        penumbra={0.04}
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.015}
-        shadow-camera-near={1}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.02}
       />
     </>
   );

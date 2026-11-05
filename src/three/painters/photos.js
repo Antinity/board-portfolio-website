@@ -1,5 +1,5 @@
 import { subject } from "@/data/content";
-import { INK, ageImage, drawCover, font, paperBase } from "./common";
+import { INK, ageImage, bareUrl, drawCover, font, linkText, paperBase } from "./common";
 
 /* Photographs and printouts. These use a glossier material. */
 
@@ -29,13 +29,17 @@ export const print = {
     const { project } = props;
     paperBase(ctx, w, h, { color: "#f5f3ee", r, shade: 0.04 });
     const pad = 10;
-    const ih = h - pad - (h > 260 ? 54 : 46); // leave a white strip for the caption
+    const strip = 66; // white caption strip under the photo
+    const ih = h - pad - strip;
     const img = images[project.image];
     if (img) drawCover(ctx, img, pad, pad, w - pad * 2, ih);
     ageImage(ctx, pad, pad, w - pad * 2, ih, r, { fade: 0.08, warm: 0.08 });
 
     ctx.fillStyle = INK.black;
-    ctx.font = font(fonts.marker, w > 300 ? 24 : 19);
+    ctx.font = font(fonts.marker, 22);
     ctx.fillText(project.title, pad + 4, ih + pad + 30);
+    ctx.fillStyle = INK.blue;
+    ctx.font = font(fonts.type, 13);
+    return [linkText(ctx, bareUrl(project.url), pad + 4, ih + pad + 52, project.url)];
   },
 };

@@ -186,3 +186,24 @@ export function silhouette(ctx, x, y, w, h) {
   ctx.fill();
   ctx.restore();
 }
+
+/**
+ * Draw a single line of text that should be clickable in the reading view.
+ * Uses the current font / fill / textAlign; returns its link region.
+ */
+export function linkText(ctx, text, x, y, href, { underline = true } = {}) {
+  const w = ctx.measureText(text).width;
+  const size = parseFloat(/(\d+(\.\d+)?)px/.exec(ctx.font)?.[1] ?? 16);
+  const left = ctx.textAlign === "center" ? x - w / 2 : ctx.textAlign === "right" ? x - w : x;
+  ctx.fillText(text, x, y);
+  if (underline) {
+    ctx.save();
+    ctx.globalAlpha *= 0.5;
+    ctx.fillRect(left, y + size * 0.18, w, Math.max(1, size * 0.06));
+    ctx.restore();
+  }
+  return { x: left - 4, y: y - size, w: w + 8, h: size * 1.45, href };
+}
+
+/** "https://example.com/" → "example.com" */
+export const bareUrl = (url) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");

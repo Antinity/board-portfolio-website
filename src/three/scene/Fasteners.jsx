@@ -2,18 +2,20 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { makeCanvas, rng } from "../textures/procedural";
 
 /* Push pins and masking tape. Geometry/materials are shared across instances. */
 
 const PIN_COLORS = ["#c3242c", "#2557c4", "#2c9a4a", "#e0b52a", "#e8e5dc", "#1d1d1f"];
 
-const pinHead = new THREE.CylinderGeometry(0.055, 0.07, 0.05, 20);
-pinHead.rotateX(Math.PI / 2);
-const pinCap = new THREE.SphereGeometry(0.058, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-pinCap.rotateX(Math.PI / 2);
-const pinNeck = new THREE.CylinderGeometry(0.022, 0.03, 0.05, 12);
-pinNeck.rotateX(Math.PI / 2);
+/** Neck + head + domed cap, merged into one geometry (one draw call per pin). */
+const pinGeometry = (() => {
+  const neck = new THREE.CylinderGeometry(0.022, 0.03, 0.05, 12).rotateX(Math.PI / 2).translate(0, 0, 0.025);
+  const head = new THREE.CylinderGeometry(0.055, 0.07, 0.05, 20).rotateX(Math.PI / 2).translate(0, 0, 0.07);
+  const cap = new THREE.SphereGeometry(0.058, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0, 0.095);
+  return mergeGeometries([neck.toNonIndexed(), head.toNonIndexed(), cap.toNonIndexed()]);
+})();
 
 const pinMaterials = new Map();
 function pinMaterial(color) {
@@ -26,14 +28,7 @@ function pinMaterial(color) {
 /** Push pin standing on a surface at world `position` ([x, y, z of surface]). */
 export function Pin({ position, color = 0 }) {
   const mat = pinMaterial(typeof color === "number" ? PIN_COLORS[color % PIN_COLORS.length] : color);
-  const [x, y, z] = position;
-  return (
-    <group position={[x, y, z]}>
-      <mesh geometry={pinNeck} material={mat} position={[0, 0, 0.025]} castShadow />
-      <mesh geometry={pinHead} material={mat} position={[0, 0, 0.07]} castShadow />
-      <mesh geometry={pinCap} material={mat} position={[0, 0, 0.095]} castShadow />
-    </group>
-  );
+  return <mesh geometry={pinGeometry} material={mat} position={position} castShadow />;
 }
 
 let tapeTexture = null;

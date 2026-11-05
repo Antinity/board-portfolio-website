@@ -1,6 +1,6 @@
 import { contact, socials, subject } from "@/data/content";
 import { todoLineY } from "@/data/boardLayout";
-import { INK, coffeeRing, field, font, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
+import { INK, bareUrl, coffeeRing, field, font, linkText, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
 
 /* Typed and handwritten paper documents. */
 
@@ -63,6 +63,7 @@ export const todo = {
     ctx.fillStyle = INK.pencil;
     ctx.fillText("shipped ✓   /   building", w * 0.52, h * 0.13);
 
+    const links = [];
     props.items.forEach((op, i) => {
       const y = h * todoLineY(i);
       const bx = w * 0.055;
@@ -72,7 +73,7 @@ export const todo = {
       ctx.strokeRect(bx, y - bs / 2, bs, bs);
       ctx.fillStyle = INK.black;
       ctx.font = font(fonts.hand, 38, 600);
-      ctx.fillText(op.title, w * 0.17, y + 11);
+      links.push(linkText(ctx, op.title, w * 0.17, y + 11, op.url, { underline: false }));
       if (op.done) {
         const tw = ctx.measureText(op.title).width;
         ctx.strokeStyle = INK.blue;
@@ -86,6 +87,7 @@ export const todo = {
         scribbleLine(ctx, w * 0.16, y, w * 0.17 + tw + 6, y - 2, r, 2);
       }
     });
+    return links;
   },
 };
 
@@ -168,7 +170,14 @@ export const indexcard = {
     ctx.fillText(job.company, 22, 86);
     ctx.fillStyle = INK.blue;
     ctx.font = font(fonts.hand, 26, 500);
-    job.highlights.slice(0, Math.floor((h - 100) / 30)).forEach((line, i) => ctx.fillText(`– ${line}`, 30, 116 + i * 30));
+    job.highlights.slice(0, Math.floor((h - 130) / 30)).forEach((line, i) => ctx.fillText(`– ${line}`, 30, 116 + i * 30));
+    if (!job.url) return [];
+    ctx.fillStyle = INK.type;
+    ctx.font = font(fonts.type, 14);
+    ctx.textAlign = "right";
+    const link = linkText(ctx, bareUrl(job.url), w - 22, h - 16, job.url);
+    ctx.textAlign = "left";
+    return [link];
   },
 };
 
@@ -193,15 +202,19 @@ export const flyer = {
     ctx.textAlign = "center";
     ctx.font = font(fonts.display, 34, 700);
     ctx.fillText("LET'S WORK TOGETHER!", w / 2, 48);
+    const links = [];
     ctx.fillStyle = INK.red;
     ctx.font = font(fonts.marker, 22);
-    ctx.fillText(contact.email, w / 2, 84);
+    links.push(linkText(ctx, contact.email, w / 2, 84, `mailto:${contact.email}`, { underline: false }));
     ctx.fillStyle = INK.type;
     ctx.font = font(fonts.type, 13);
-    const handles = socials.filter((s) => s.id !== "server").map((s) => `${s.label}: ${s.handle}`);
-    ctx.fillText(handles.join("  ·  "), w / 2, 114, w - 30);
+    const shown = socials.filter((s) => s.id !== "server");
+    shown.forEach((s, i) => {
+      const x = (w / (shown.length + 1)) * (i + 1);
+      links.push(linkText(ctx, `${s.label}: ${s.handle}`, x, 116, s.url));
+    });
     ctx.font = font(fonts.type, 11);
-    ctx.fillText(`Replies in ${contact.timezone}`, w / 2, 138);
+    ctx.fillText(`Replies in ${contact.timezone}`, w / 2, 142);
     ctx.textAlign = "left";
 
     // perforation
@@ -223,5 +236,6 @@ export const flyer = {
       ctx.fillText(contact.email, 0, 0, h - tabsTop - 12);
       ctx.restore();
     }
+    return links;
   },
 };

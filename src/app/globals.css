@@ -29,11 +29,12 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Text inside the case file should be selectable / copyable. */
-aside {
-  user-select: text;
-}
-
 img {
   -webkit-user-drag: none;
+}
+
+/* The torch is the cursor: hide the system one over the board, show it again while reading. */
+body:not([data-reading]),
+body:not([data-reading]) canvas {
+  cursor: none;
 }

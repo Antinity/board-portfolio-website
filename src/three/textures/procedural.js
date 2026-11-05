@@ -36,7 +36,7 @@ function toTexture(canvas, { repeat, srgb = true } = {}) {
  * few pin holes. Returns a colour map and a matching bump map.
  */
 export function corkTextures(repeat) {
-  const S = 1024;
+  const S = 2048;
   const color = makeCanvas(S, S);
   const bump = makeCanvas(S, S);
   const c = color.getContext("2d");
@@ -49,10 +49,10 @@ export function corkTextures(repeat) {
   b.fillRect(0, 0, S, S);
 
   const tones = ["#7a5230", "#b07f50", "#c4925d", "#6a4526", "#a5764a", "#8d6039", "#d0a06a"];
-  for (let i = 0; i < 52000; i++) {
+  for (let i = 0; i < 200000; i++) {
     const x = r() * S;
     const y = r() * S;
-    const rad = 0.6 + r() * r() * 3.2;
+    const rad = 0.8 + r() * r() * 4;
     const tone = tones[(r() * tones.length) | 0];
     c.globalAlpha = 0.35 + r() * 0.55;
     c.fillStyle = tone;
@@ -69,7 +69,7 @@ export function corkTextures(repeat) {
   // old pin holes
   c.globalAlpha = 0.7;
   b.globalAlpha = 1;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const x = r() * S;
     const y = r() * S;
     c.fillStyle = "#2e1d10";
@@ -113,12 +113,13 @@ export function paperBumpTexture() {
 }
 
 /**
- * Flashlight "cookie": what the light looks like through a worn torch lens —
- * a small, tight Maglite hotspot, a dimmer reflector band and a soft outer
- * ring, with only the faintest grime, hairline scratches and one tiny chip.
+ * Flashlight "cookie" — the beam pattern projected by the torch, modelled on
+ * an old LED torch in The Last of Us Part II: a large, evenly lit disc with a
+ * crisp edge, soft concentric reflector bands, and a tiny bright halo around
+ * the dark bulb at the very centre. Lens wear is kept to a few faint specks.
  */
-export function damagedGlassCookie() {
-  const S = 512;
+export function torchCookie() {
+  const S = 1024;
   const cv = makeCanvas(S, S);
   const c = cv.getContext("2d");
   const r = rng(11);
@@ -127,73 +128,57 @@ export function damagedGlassCookie() {
   c.fillStyle = "#000";
   c.fillRect(0, 0, S, S);
 
+  // radial brightness profile, as a fraction of the cone radius
   const g = c.createRadialGradient(m, m, 0, m, m, m);
   [
-    [0, 1],
-    [0.06, 0.97],
-    [0.11, 0.78], // hotspot edge (small)
-    [0.17, 0.5],
-    [0.3, 0.36], // reflector band
-    [0.42, 0.38],
-    [0.48, 0.4], // faint outer ring
-    [0.56, 0.24],
-    [0.75, 0.09],
+    [0, 0.5], // the bulb's dark centre
+    [0.018, 0.42],
+    [0.032, 1], // tiny bright halo
+    [0.06, 0.96],
+    [0.11, 0.86],
+    [0.19, 0.8],
+    [0.25, 0.64], // darker reflector band
+    [0.32, 0.7],
+    [0.42, 0.79], // brighter ring
+    [0.5, 0.68],
+    [0.6, 0.73],
+    [0.7, 0.66],
+    [0.8, 0.6],
+    [0.86, 0.55],
+    [0.9, 0.42], // crisp but not razor edge
+    [0.925, 0.12],
+    [0.945, 0],
     [1, 0],
   ].forEach(([at, v]) => g.addColorStop(at, `rgba(255,255,255,${v})`));
   c.fillStyle = g;
   c.fillRect(0, 0, S, S);
 
+  // soft, slightly irregular reflector ripples
   c.globalCompositeOperation = "multiply";
-
-  // subtle reflector ripples
-  for (let i = 0; i < 7; i++) {
-    const rad = m * (0.16 + i * 0.05);
-    c.strokeStyle = `rgba(0,0,0,${0.02 + r() * 0.03})`;
-    c.lineWidth = 2 + r() * 3;
+  for (let i = 0; i < 10; i++) {
+    const rad = m * (0.1 + i * 0.075);
+    c.strokeStyle = `rgba(0,0,0,${0.03 + r() * 0.04})`;
+    c.lineWidth = 6 + r() * 10;
+    c.filter = "blur(4px)";
     c.beginPath();
-    c.arc(m + (r() - 0.5) * 3, m + (r() - 0.5) * 3, rad, 0, Math.PI * 2);
+    c.arc(m + (r() - 0.5) * 6, m + (r() - 0.5) * 6, rad, 0, Math.PI * 2);
     c.stroke();
   }
+  c.filter = "none";
 
-  // a whisper of grime
-  for (let i = 0; i < 6; i++) {
-    const x = m + (r() - 0.5) * m;
-    const y = m + (r() - 0.5) * m;
-    const rad = 14 + r() * 26;
+  // a few faint specks of dust on the lens
+  for (let i = 0; i < 9; i++) {
+    const a = r() * Math.PI * 2;
+    const d = r() * m * 0.8;
+    const x = m + Math.cos(a) * d;
+    const y = m + Math.sin(a) * d;
+    const rad = 2 + r() * 5;
     const bg = c.createRadialGradient(x, y, 0, x, y, rad);
-    bg.addColorStop(0, `rgba(0,0,0,${0.04 + r() * 0.05})`);
+    bg.addColorStop(0, `rgba(0,0,0,${0.08 + r() * 0.08})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = bg;
     c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
   }
-
-  // a few hairline scratches
-  for (let i = 0; i < 7; i++) {
-    const x = m + (r() - 0.5) * m * 0.9;
-    const y = m + (r() - 0.5) * m * 0.9;
-    const a = r() * Math.PI;
-    const l = 12 + r() * 40;
-    c.strokeStyle = `rgba(0,0,0,${0.06 + r() * 0.07})`;
-    c.lineWidth = 0.5 + r() * 0.5;
-    c.beginPath();
-    c.moveTo(x, y);
-    c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
-    c.stroke();
-  }
-
-  // one tiny chip near the rim
-  c.strokeStyle = "rgba(0,0,0,0.22)";
-  c.lineWidth = 1;
-  c.beginPath();
-  let x = m + m * 0.36;
-  let y = m - m * 0.18;
-  c.moveTo(x, y);
-  for (let i = 0; i < 4; i++) {
-    x += 4 + r() * 5;
-    y += (r() - 0.4) * 6;
-    c.lineTo(x, y);
-  }
-  c.stroke();
 
   c.globalCompositeOperation = "source-over";
   const t = new THREE.CanvasTexture(cv);

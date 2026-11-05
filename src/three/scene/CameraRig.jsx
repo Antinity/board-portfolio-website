@@ -7,7 +7,6 @@ import { BOARD_H, BOARD_W, FRAME } from "../space";
 import { damp } from "../rig";
 
 const MIN_DIST = 2.6;
-const PARALLAX = 0.022; // camera sway toward the pointer, fraction of distance
 const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
 
 /**
@@ -33,13 +32,13 @@ export default function CameraRig({ rig }) {
   const coverDist = () => {
     const halfW = BOARD_W / 2 + FRAME;
     const halfH = BOARD_H / 2 + FRAME;
-    return Math.min(halfW / (tanHalf() * camera.aspect), halfH / tanHalf()) / (1 + PARALLAX * 2.5);
+    return Math.min(halfW / (tanHalf() * camera.aspect), halfH / tanHalf());
   };
   const clampView = (v) => {
     v.d = MathUtils.clamp(v.d, MIN_DIST, coverDist());
     const vis = visible(v.d);
-    const mx = Math.max(BOARD_W / 2 + FRAME - vis.w / 2 - v.d * PARALLAX, 0);
-    const my = Math.max(BOARD_H / 2 + FRAME - vis.h / 2 - v.d * PARALLAX, 0);
+    const mx = Math.max(BOARD_W / 2 + FRAME - vis.w / 2, 0);
+    const my = Math.max(BOARD_H / 2 + FRAME - vis.h / 2, 0);
     v.x = MathUtils.clamp(v.x, -mx, mx);
     v.y = MathUtils.clamp(v.y, -my, my);
     return v;
@@ -105,7 +104,6 @@ export default function CameraRig({ rig }) {
         p.moved = true;
       }
       rig.dragging = true;
-      el.style.cursor = "grabbing";
       const vis = visible(v.d);
       v.x -= (dx / size.width) * vis.w;
       v.y += (dy / size.height) * vis.h;
@@ -140,7 +138,6 @@ export default function CameraRig({ rig }) {
       if (pointers.size === 0) {
         // let the click handler see `dragging` first, then reset
         setTimeout(() => (rig.dragging = false), 0);
-        el.style.cursor = "";
       }
     };
     const onWheel = (e) => {
@@ -174,10 +171,7 @@ export default function CameraRig({ rig }) {
     c.y += (v.y - c.y) * k;
     c.d += (v.d - c.d) * k;
 
-    // gentle parallax toward the pointer
-    const px = rig.pointer.x * c.d * PARALLAX;
-    const py = rig.pointer.y * c.d * PARALLAX;
-    camera.position.set(c.x + px, c.y + py, c.d);
+    camera.position.set(c.x, c.y, c.d);
     camera.lookAt(c.x, c.y, 0);
 
     // screen-space velocity → motion blur

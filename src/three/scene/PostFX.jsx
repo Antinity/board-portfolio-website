@@ -39,11 +39,11 @@ export default function PostFX({ rig, quality = "high" }) {
   const high = quality === "high";
 
   return (
-    <EffectComposer multisampling={0} enableNormalPass={high}>
+    <EffectComposer multisampling={high ? 4 : 2} enableNormalPass={high}>
       {high && (
-        <SSAO samples={21} rings={4} radius={0.12} intensity={22} luminanceInfluence={0.35} worldDistanceThreshold={40} worldDistanceFalloff={10} worldProximityThreshold={0.4} worldProximityFalloff={0.2} color="black" />
+        <SSAO samples={16} rings={4} radius={0.1} intensity={10} luminanceInfluence={0.5} worldDistanceThreshold={40} worldDistanceFalloff={10} worldProximityThreshold={0.3} worldProximityFalloff={0.15} depthAwareUpsampling resolutionScale={0.5} color="black" />
       )}
-      {high && <DepthOfField ref={dof} target={[0, 0, 0]} focusRange={2.4} bokehScale={2.2} resolutionScale={0.5} />}
+      {high && <DepthOfField ref={dof} target={[0, 0, 0]} focusRange={3} bokehScale={1.3} resolutionScale={0.75} />}
       <Bloom intensity={0.22} luminanceThreshold={0.92} luminanceSmoothing={0.08} mipmapBlur />
       <primitive object={motionBlur} />
       <primitive object={lens} />

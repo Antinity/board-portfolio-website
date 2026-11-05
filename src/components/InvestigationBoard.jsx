@@ -10,18 +10,16 @@ import ReadingView from "@/reading/ReadingView";
 // WebGL only runs in the browser.
 const Experience = dynamic(() => import("@/three/Experience"), { ssr: false });
 
-/**
- * Where a page is held while reading, as fractions of the visible area.
- * Wide screens leave the right side free for the transcript (see reading.module.css).
- */
+/** Where a page is held while reading, as fractions of the visible area (centred). */
 function readLayoutFor(width) {
-  return width >= 900 ? { shift: -0.17, height: 0.8, width: 0.52 } : { shift: 0, height: 0.7, width: 0.9 };
+  return width >= 900 ? { shift: 0, height: 0.84, width: 0.8 } : { shift: 0, height: 0.74, width: 0.92 };
 }
 
 /**
  * App shell: which page is being read, torch on/off, and keyboard access.
  * No HUD — the board is the interface.
  *
+ * The torch is the cursor (the system cursor is hidden over the board).
  * Keyboard: ← / → step through documents while reading, Esc puts it back,
  * F toggles the torch. A visually hidden list gives screen readers and
  * keyboard users a way into every document.
@@ -82,7 +80,7 @@ export default function InvestigationBoard() {
         </ul>
       </nav>
 
-      <ReadingView item={reading} index={index} total={READABLE.length} onClose={close} onPrev={prev} onNext={next} />
+      <ReadingView item={reading} onClose={close} onPrev={prev} onNext={next} />
     </>
   );
 }

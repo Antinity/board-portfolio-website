@@ -1,14 +1,13 @@
 import { contact, socials, subject } from "@/data/content";
-import styles from "./reading.module.css";
 
 /*
- * Transcripts: the readable text of each kind of evidence, shown beside the
- * page while it's held up (like the transcript toggle on game notes).
+ * Transcripts: the text of each kind of evidence, given to screen readers
+ * while a page is held up (and used for the accessible list of documents).
  * Each receives the board item and returns { title, body }.
  */
 
 const Link = ({ href, children }) => (
-  <a className={styles.link} href={href} target="_blank" rel="noopener noreferrer">
+  <a href={href} target="_blank" rel="noopener noreferrer">
     {children}
   </a>
 );
@@ -16,7 +15,7 @@ const Link = ({ href, children }) => (
 const bare = (url) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 const Fields = ({ rows }) => (
-  <dl className={styles.fields}>
+  <dl>
     {rows.map(([k, v]) => (
       <div key={k}>
         <dt>{k}</dt>
@@ -55,23 +54,23 @@ const TRANSCRIPTS = {
         {subject.bio.map((p) => (
           <p key={p}>{p}</p>
         ))}
-        <p className={styles.muted}>Known traits: {subject.traits.join(" · ")}</p>
+        <p>Known traits: {subject.traits.join(" · ")}</p>
       </>
     ),
   }),
 
   sticky: (item) => ({
     title: "Sticky note",
-    body: <p className={styles.hand}>{item.props.text.replace("\n", " ")}</p>,
+    body: <p>{item.props.text.replace("\n", " ")}</p>,
   }),
 
   print: ({ props: { project } }) => ({
     title: project.title,
     body: (
       <>
-        <p className={styles.muted}>{project.kind}</p>
+        <p>{project.kind}</p>
         <p>{project.summary}</p>
-        <p className={styles.muted}>Built with: {project.stack.join(", ")}</p>
+        <p>Built with: {project.stack.join(", ")}</p>
         <p>
           <Link href={project.url}>{bare(project.url)} →</Link>
         </p>
@@ -85,10 +84,10 @@ const TRANSCRIPTS = {
       ["Currently building", items.filter((o) => !o.done)],
       ["Shipped", items.filter((o) => o.done)],
     ].map(([heading, list]) => (
-      <section key={heading} className={styles.group}>
+      <section key={heading}>
         <h3>{heading}</h3>
         {list.map((op) => (
-          <div key={op.id} className={styles.entry}>
+          <div key={op.id}>
             <h4>
               {op.done ? "☑" : "☐"} <Link href={op.url}>{op.title}</Link>
             </h4>
@@ -102,7 +101,7 @@ const TRANSCRIPTS = {
   tag: ({ props: { group } }) => ({
     title: `Evidence — ${group.group}`,
     body: (
-      <ul className={styles.list}>
+      <ul>
         {group.items.map((i) => (
           <li key={i}>{i}</li>
         ))}
@@ -114,10 +113,10 @@ const TRANSCRIPTS = {
     title: `Statement — ${witness.name}`,
     body: (
       <>
-        <p className={styles.muted}>
+        <p>
           {witness.role}, {witness.org}
         </p>
-        <blockquote className={styles.quote}>“{witness.statement}”</blockquote>
+        <blockquote>“{witness.statement}”</blockquote>
       </>
     ),
   }),
@@ -126,11 +125,11 @@ const TRANSCRIPTS = {
     title: job.role,
     body: (
       <>
-        <p className={styles.muted}>
+        <p>
           {job.company} · {job.period ?? "dates on request"}
         </p>
         <p>{job.summary}</p>
-        <ul className={styles.list}>
+        <ul>
           {job.highlights.map((h) => (
             <li key={h}>{h}</li>
           ))}
@@ -152,7 +151,7 @@ const TRANSCRIPTS = {
           <Link href={`mailto:${contact.email}`}>{contact.email}</Link>
         </p>
         <Fields rows={socials.map((s) => [s.label, <Link key={s.id} href={s.url}>{s.handle}</Link>])} />
-        <p className={styles.muted}>Replies in {contact.timezone}.</p>
+        <p>Replies in {contact.timezone}.</p>
       </>
     ),
   }),

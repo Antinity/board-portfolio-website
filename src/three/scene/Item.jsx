@@ -11,7 +11,8 @@ import { damp } from "../rig";
 import { Pin, Tape } from "./Fasteners";
 
 const READ_DIST = 1.6; // how far in front of the camera a page is held to read
-const HOVER_OPACITY = 0.13;
+const HOVER_OPACITY = 0.045;
+const READ_TILT = { x: 0.07, y: 0.1 }; // max paper tilt toward the pointer while reading (radians)
 
 /**
  * Paper geometry that isn't perfectly flat: edges lift a little, one corner
@@ -78,11 +79,23 @@ const FASTENERS = {
 const smooth = (t) => t * t * (3 - 2 * t);
 const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
 const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
+const tiltEuler = new THREE.Euler();
+const tiltQuat = new THREE.Quaternion();
+
+/** Link region (board px, item-local) under a uv coordinate, if any. */
+function linkAt(item, links, uv) {
+  if (!uv || !links?.length) return null;
+  const x = uv.x * item.w;
+  const y = (1 - uv.y) * item.h;
+  return links.find((l) => x >= l.x && x <= l.x + l.w && y >= l.y && y <= l.y + l.h) ?? null;
+}
 
 /**
  * One piece of evidence: painted texture on a slightly curled sheet with
  * its pins / tape. Hover shows a faint white overlay; when `selected` the
- * sheet lifts off the board and is held up in front of the camera to read.
+ * sheet lifts off the board and is held up in front of the camera to read,
+ * tilting gently toward the pointer. Links printed on the page (URLs,
+ * email…) are clickable while it's being read.
  *
  * @param {number[][]} occupied   pin spots already used by red strings
  * @param {{shift:number,height:number,width:number}} readLayout  reading pose,
@@ -96,7 +109,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const group = useRef(null);
   const fasteners = useRef(null);
   const material = useRef(null);
-  const state = useRef({ t: 0, hover: 0, hovered: false });
+  const state = useRef({ t: 0, hover: 0, hovered: false, tiltX: 0, tiltY: 0 });
   const readable = item.readable !== false;
 
   useEffect(() => {
@@ -153,14 +166,20 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       .copy(camera.position)
       .addScaledVector(tmp.fwd, READ_DIST)
       .addScaledVector(tmp.right, readLayout.shift * visW);
-    tmp.quat.copy(camera.quaternion).multiply(TILT);
+    // gentle tilt toward the pointer while held
+    const wantX = selected ? -rig.pointer.y * READ_TILT.x : 0;
+    const wantY = selected ? rig.pointer.x * READ_TILT.y : 0;
+    s.tiltX += (wantX - s.tiltX) * damp(5, dt);
+    s.tiltY += (wantY - s.tiltY) * damp(5, dt);
+    tiltQuat.setFromEuler(tiltEuler.set(s.tiltX, s.tiltY, 0));
+    tmp.quat.copy(camera.quaternion).multiply(TILT).multiply(tiltQuat);
 
     g.position.lerpVectors(board.pos, tmp.pos, e);
     g.position.z += Math.sin(e * Math.PI) * 0.6; // arc toward the viewer
     g.quaternion.slerpQuaternions(board.quat, tmp.quat, e);
     g.scale.setScalar(THREE.MathUtils.lerp(1, scale, e));
     if (fasteners.current) fasteners.current.visible = s.t < 0.02;
-    if (material.current) material.current.emissiveIntensity = e * 0.9; // readable even in the dark
+    if (material.current) material.current.emissiveIntensity = e * 0.72; // readable even in the dark
 
     if (selected || s.t > 0.001) {
       rig.readT = e;
@@ -180,19 +199,26 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     ? {
         onPointerOver: (e) => {
           e.stopPropagation();
-          if (rig.reading) return;
-          state.current.hovered = true;
-          document.body.style.cursor = "pointer";
+          if (!rig.reading) state.current.hovered = true;
         },
         onPointerOut: () => {
           state.current.hovered = false;
-          document.body.style.cursor = "";
+          if (selected) document.body.style.cursor = "";
+        },
+        onPointerMove: (e) => {
+          if (!selected) return;
+          e.stopPropagation();
+          document.body.style.cursor = linkAt(item, painted.links, e.uv) ? "pointer" : "";
         },
         onClick: (e) => {
           e.stopPropagation();
+          if (selected) {
+            const link = linkAt(item, painted.links, e.uv);
+            if (link) window.open(link.href, link.href.startsWith("mailto:") ? "_self" : "_blank", "noopener");
+            return;
+          }
           if (rig.dragging || rig.reading) return;
           state.current.hovered = false;
-          document.body.style.cursor = "";
           onRead(item.id);
         },
       }

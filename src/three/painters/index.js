@@ -8,7 +8,8 @@ import { label, sticky, tag } from "./props";
 
 /**
  * Painter registry. A painter is `{ paint(ctx, item, env), images?, glossy?, alpha? }`:
- *  - paint:  draws the item in board-pixel units
+ *  - paint:  draws the item in board-pixel units; may return clickable link
+ *            regions `[{ x, y, w, h, href }]` (board px, item-local)
  *  - images: URLs it needs, preloaded into env.images
  *  - glossy: photo paper (lower roughness)
  *  - alpha:  has transparent cut-outs
@@ -16,7 +17,7 @@ import { label, sticky, tag } from "./props";
 export const PAINTERS = { crew, dossier, flyer, indexcard, label, polaroid, print, sticky, tag, todo };
 
 /** Texture pixels per board pixel (capped so nothing exceeds 2048px). */
-const DENSITY = 2.4;
+const DENSITY = 3;
 const MAX_SIZE = 2048;
 
 const imageCache = new Map();
@@ -49,10 +50,10 @@ export async function paintItem(item) {
   const canvas = makeCanvas(Math.ceil(item.w * scale), Math.ceil(item.h * scale));
   const ctx = canvas.getContext("2d");
   ctx.scale(scale, scale);
-  painter.paint(ctx, item, { fonts, images, r: seeded(item.id) });
+  const links = painter.paint(ctx, item, { fonts, images, r: seeded(item.id) }) ?? [];
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  return { texture, glossy: Boolean(painter.glossy), alpha: Boolean(painter.alpha) };
+  texture.anisotropy = 16; // clamped to the GPU's maximum by three.js
+  return { texture, links, glossy: Boolean(painter.glossy), alpha: Boolean(painter.alpha) };
 }
