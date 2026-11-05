@@ -21,6 +21,20 @@ export function createRig(home = new Vector3()) {
     zoomBlur: 0,
     /** user is dragging the camera */
     dragging: false,
+    /** "mouse" or "touch": whichever the visitor used last */
+    input: "mouse",
+    /** a finger is currently down on the board */
+    touching: false,
+    /** clicks are ignored until this time (ms): the tail of a drag, pinch or glide-stop */
+    suppressClickUntil: 0,
+    /** id of the item the resting torch has settled on (touch only) */
+    focus: null,
+    /** camera speed on the board, world units / second */
+    speed: 0,
+    /** cone radius of the torch on the board, world units (sized to the screen) */
+    torchRadius: 12.2,
+    /** the board fills the screen and is panned sideways (phones) */
+    fill: false,
     /** id of the item being read, or null */
     reading: null,
     /** 0 → 1 while a page pops out to be read */

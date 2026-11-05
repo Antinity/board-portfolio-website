@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { MathUtils, Plane, Raycaster, Vector3 } from "three";
+import { MathUtils, Plane, Raycaster, Vector2, Vector3 } from "three";
 import { BOARD_H, BOARD_W, FRAME, OUTER_HALF_H, OUTER_HALF_W } from "../space";
 import { damp } from "../rig";
 import { loading } from "../loading";
@@ -11,13 +11,25 @@ const MIN_DIST = 2.6; // closest zoom
 const ZOOM_OUT_MARGIN = 1.06; // furthest zoom: everything on the wall, with a little wall around it
 const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
 
+const REST = new Vector2(0, 0.08); // where the torch is held on a touch screen (NDC)
+const TORCH_MAX = 12.2; // widest torch cone (desktop)
+const GLIDE_DECAY = 2.2; // per second: how quickly a flick slows down
+const GLIDE_MAX = 60; // world units / second
+const RUBBER = 0.33; // how much of a finger's travel passes the end of the board
+const RUBBER_MAX = 0.15; // furthest past the end, as a fraction of the view
+
+/** Phones and tablets: the board fills the screen and is panned sideways. */
+const isFillMode = () => window.matchMedia("(pointer: coarse)").matches || window.innerWidth < window.innerHeight;
+
 /**
  * Perspective camera over the board.
- *  - opens on the subject, then settles fully zoomed out (the whole board,
- *    frame and planks in view); zoom in from there
- *  - drag to pan, wheel / pinch to zoom toward the pointer
- *  - opens close on the subject, then pulls back
+ *  - opens on the subject, then settles fully zoomed out; zoom in from there
+ *  - drag to pan, wheel / pinch to zoom
  *  - input is paused while a page is being read
+ *
+ * On a phone ("fill" mode) the furthest zoom is the board filling the
+ * screen edge to edge, and one finger swipes it sideways with momentum
+ * and a rubber band at both ends.
  */
 export default function CameraRig({ rig }) {
   const { camera, gl, size } = useThree();
@@ -25,6 +37,8 @@ export default function CameraRig({ rig }) {
   const cur = useRef({ x: 0, y: 0, d: 34 }); // smoothed
   const ray = useRef(new Raycaster());
   const hit = useRef(new Vector3());
+  const fill = useRef(false);
+  const gesture = useRef({ vel: { x: 0, y: 0 }, samples: [], down: false, moved: false, pinched: false, caught: false });
 
   const tanHalf = () => Math.tan(MathUtils.degToRad(camera.fov / 2));
   const visible = (d) => {
@@ -39,19 +53,41 @@ export default function CameraRig({ rig }) {
   };
   /** Distance at which the whole board (frame and planks included) fits on screen. */
   const containDist = () => Math.max(OUTER_HALF_W / (tanHalf() * camera.aspect), OUTER_HALF_H / tanHalf());
-  const farthest = () => containDist() * ZOOM_OUT_MARGIN;
-  const clampView = (v) => {
+  const farthest = () => (fill.current ? coverDist() : containDist() * ZOOM_OUT_MARGIN);
+  /** How far the view centre may travel at distance `d`. */
+  const limits = (d) => {
+    const vis = visible(d);
+    const halfW = fill.current ? OUTER_HALF_W : BOARD_W / 2 + FRAME;
+    return {
+      vis,
+      mx: Math.max(halfW - vis.w / 2, 0),
+      my: Math.max(BOARD_H / 2 + FRAME - vis.h / 2, 0),
+    };
+  };
+  /** Keep the target view in range; `slack` (fraction of the view) lets it stretch past the ends. */
+  const clampView = (v, slack = 0) => {
     v.d = MathUtils.clamp(v.d, MIN_DIST, farthest());
-    const vis = visible(v.d);
-    const mx = Math.max(BOARD_W / 2 + FRAME - vis.w / 2, 0);
-    const my = Math.max(BOARD_H / 2 + FRAME - vis.h / 2, 0);
-    v.x = MathUtils.clamp(v.x, -mx, mx);
-    v.y = MathUtils.clamp(v.y, -my, my);
+    const { vis, mx, my } = limits(v.d);
+    const sx = slack * vis.w;
+    const sy = slack * vis.h;
+    v.x = MathUtils.clamp(v.x, -mx - sx, mx + sx);
+    v.y = MathUtils.clamp(v.y, -my - sy, my + sy);
     return v;
   };
 
-  // Intro: open close on the subject, then pull all the way back so the
-  // whole board is in view (the furthest zoom).
+  // Mode and torch size follow the viewport.
+  useEffect(() => {
+    fill.current = isFillMode();
+    rig.fill = fill.current;
+    if (rig.input === "mouse" && window.matchMedia("(pointer: coarse)").matches) rig.input = "touch";
+    clampView(view.current);
+    const vis = visible(farthest());
+    rig.torchRadius = Math.min(TORCH_MAX, 0.65 * Math.min(vis.w, vis.h));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read live camera values
+  }, [size.width, size.height]);
+
+  // Intro: open close on the subject, then pull all the way back
+  // (the whole board; on a phone, the board filling the screen).
   useEffect(() => {
     const v = view.current;
     const c = cur.current;
@@ -77,52 +113,34 @@ export default function CameraRig({ rig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
-  // Stay within limits when the viewport changes.
-  useEffect(() => {
-    clampView(view.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read live camera values
-  }, [size.width, size.height]);
-
-  // Input: drag, wheel, pinch.
+  // Input: drag, flick, wheel, pinch.
   useEffect(() => {
     const el = gl.domElement;
+    const g = gesture.current;
     const pointers = new Map();
-    let pinchDist = 0;
+    let pinch = null;
 
-    const toNdc = (e) => {
+    const ndcOf = (x, y) => {
       const r = el.getBoundingClientRect();
-      return [((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1];
+      return [((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1];
+    };
+    const toNdc = (e) => ndcOf(e.clientX, e.clientY);
+    const noteInput = (e) => {
+      rig.input = e.pointerType === "touch" ? "touch" : "mouse";
     };
 
-    const onMove = (e) => {
-      const [nx, ny] = toNdc(e);
-      rig.pointer.set(nx, ny);
-      rig.pointerActive = true;
-      const p = pointers.get(e.pointerId);
-      if (!p) return;
-      const dx = e.clientX - p.x;
-      const dy = e.clientY - p.y;
-      p.x = e.clientX;
-      p.y = e.clientY;
+    /** Zoom the target view, keeping the board point under (cx, cy) in place. */
+    const zoomAt = (factor, cx, cy) => {
       const v = view.current;
-
-      if (pointers.size === 2) {
-        const [a, b] = [...pointers.values()];
-        const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchDist) zoomBy(pinchDist / dist);
-        pinchDist = dist;
-        rig.dragging = true;
-        return;
-      }
-      if (!p.moved) {
-        if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < 6) return; // still a click
-        p.moved = true;
-      }
-      rig.dragging = true;
-      const vis = visible(v.d);
-      v.x -= (dx / size.width) * vis.w;
-      v.y += (dy / size.height) * vis.h;
-      v.lambda = 14;
+      const [nx, ny] = ndcOf(cx, cy);
+      const before = visible(v.d);
+      const px = v.x + (nx * before.w) / 2;
+      const py = v.y + (ny * before.h) / 2;
+      v.d *= factor;
+      clampView(v);
+      const after = visible(v.d);
+      v.x = px - (nx * after.w) / 2;
+      v.y = py - (ny * after.h) / 2;
       clampView(v);
     };
 
@@ -138,27 +156,142 @@ export default function CameraRig({ rig }) {
       clampView(v);
     };
 
+    /** Past the end of the board a finger only moves the view a third as far. */
+    const band = (pos, delta, lim) => ((pos < -lim && delta < 0) || (pos > lim && delta > 0) ? delta * RUBBER : delta);
+
+    const onMove = (e) => {
+      noteInput(e);
+      const [nx, ny] = toNdc(e);
+      rig.pointer.set(nx, ny);
+      rig.pointerActive = true;
+      const p = pointers.get(e.pointerId);
+      if (!p) return;
+      let dx = e.clientX - p.x;
+      let dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      const v = view.current;
+      const touch = e.pointerType === "touch";
+
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinch) {
+          const vis = visible(v.d);
+          v.x -= ((mx - pinch.x) / size.width) * vis.w;
+          v.y += ((my - pinch.y) / size.height) * vis.h;
+          if (dist > 0) zoomAt(pinch.dist / dist, mx, my);
+        }
+        pinch = { x: mx, y: my, dist };
+        v.lambda = 22;
+        g.pinched = true;
+        rig.dragging = true;
+        return;
+      }
+      if (!p.moved) {
+        if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < (touch ? 8 : 6)) return; // still a tap
+        p.moved = true;
+        dx = e.clientX - p.sx; // include the distance spent deciding
+        dy = e.clientY - p.sy;
+      }
+      g.moved = true;
+      rig.dragging = true;
+      const vis = visible(v.d);
+      const wx = -(dx / size.width) * vis.w;
+      const wy = (dy / size.height) * vis.h;
+      if (fill.current) {
+        const { mx, my } = limits(v.d);
+        v.x += band(v.x, wx, mx);
+        v.y += band(v.y, wy, my);
+      } else {
+        v.x += wx;
+        v.y += wy;
+      }
+      v.lambda = touch ? 40 : 14;
+      clampView(v, fill.current ? RUBBER_MAX : 0);
+      if (touch) {
+        g.samples.push({ t: e.timeStamp, x: wx, y: wy });
+        if (g.samples.length > 12) g.samples.shift();
+      }
+    };
+
     const onDown = (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      noteInput(e);
       if (rig.reading) return;
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
-      if (pointers.size === 2) pinchDist = 0;
+      const v = view.current;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false });
+      g.down = true;
+      rig.touching = e.pointerType === "touch";
+      if (pointers.size === 1) {
+        g.moved = false;
+        g.pinched = false;
+        g.samples.length = 0;
+        // a finger landing on a gliding board stops it dead, and is not a tap
+        g.caught = Math.hypot(g.vel.x, g.vel.y) > 0.6;
+        if (g.caught) {
+          v.x = cur.current.x;
+          v.y = cur.current.y;
+          clampView(v, RUBBER_MAX);
+        }
+        g.vel.x = g.vel.y = 0;
+      } else {
+        pinch = null;
+        g.pinched = true;
+      }
       const [nx, ny] = toNdc(e);
       rig.pointer.set(nx, ny);
       rig.pointerActive = true;
     };
+
     const onUp = (e) => {
-      pointers.delete(e.pointerId);
-      if (pointers.size < 2) pinchDist = 0;
-      if (pointers.size === 0) {
-        // let the click handler see `dragging` first, then reset
-        setTimeout(() => (rig.dragging = false), 0);
+      const tracked = pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinch = null;
+      if (pointers.size === 1) {
+        // one finger left after a pinch: carry on as a drag, never as a tap
+        const [rest] = pointers.values();
+        rest.moved = true;
       }
+      if (pointers.size > 0) return;
+
+      g.down = false;
+      rig.touching = false;
+      if (tracked && e.pointerType === "touch" && g.moved && !g.pinched) {
+        // flick: finger speed over the last ~100 ms becomes momentum
+        const recent = g.samples.filter((s) => e.timeStamp - s.t < 100);
+        const last = recent[recent.length - 1];
+        if (last && e.timeStamp - last.t < 60) {
+          const span = MathUtils.clamp(last.t - recent[0].t + 16.7, 30, 120) / 1000;
+          const vx = recent.reduce((n, s) => n + s.x, 0) / span;
+          const vy = recent.reduce((n, s) => n + s.y, 0) / span;
+          const speed = Math.hypot(vx, vy);
+          if (speed > 1.5) {
+            const k = Math.min(1, GLIDE_MAX / speed);
+            g.vel.x = vx * k;
+            g.vel.y = vy * k;
+          }
+        }
+      }
+      if (g.moved || g.pinched || g.caught || rig.dragging) rig.suppressClickUntil = performance.now() + 350;
+      rig.dragging = false;
+      g.moved = g.pinched = g.caught = false;
     };
+
     const onWheel = (e) => {
       e.preventDefault();
       if (rig.reading) return;
       const unit = e.deltaMode === 1 ? 16 : 1;
+      if (fill.current && (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
+        // sideways scroll (trackpad, shift + wheel) pans along the board
+        const v = view.current;
+        const along = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
+        v.x += ((along * unit) / size.width) * visible(v.d).w;
+        v.lambda = 14;
+        clampView(v);
+        return;
+      }
       zoomBy(Math.exp(e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0012)));
     };
 
@@ -177,10 +310,35 @@ export default function CameraRig({ rig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read live camera values
   }, [gl, rig, size.width, size.height]);
 
-  useFrame((_, dt) => {
+  useFrame((_, rawDt) => {
     const v = view.current;
     const c = cur.current;
-    const k = damp(v.lambda, Math.min(dt, 0.05));
+    const g = gesture.current;
+    const dt = Math.min(rawDt, 0.05);
+
+    if (!g.down) {
+      if (g.vel.x !== 0 || g.vel.y !== 0) {
+        // a flick glides on, slowing down, and stops softly at the ends of the board
+        v.x += g.vel.x * dt;
+        v.y += g.vel.y * dt;
+        const decay = Math.exp(-GLIDE_DECAY * dt);
+        const { mx, my } = limits(v.d);
+        const past = Math.abs(v.x) > mx || Math.abs(v.y) > my;
+        const drag = past ? decay * Math.exp(-14 * dt) : decay;
+        g.vel.x *= drag;
+        g.vel.y *= drag;
+        if (Math.hypot(g.vel.x, g.vel.y) < 0.4) g.vel.x = g.vel.y = 0;
+        clampView(v, RUBBER_MAX * 0.5);
+      }
+      if (g.vel.x === 0 && g.vel.y === 0) {
+        // at rest: spring back from any stretch past the ends
+        const { mx, my } = limits(v.d);
+        if (Math.abs(v.x) > mx || Math.abs(v.y) > my) v.lambda = 10;
+        clampView(v);
+      }
+    }
+
+    const k = damp(v.lambda, dt);
     const prev = { ...c };
     c.x += (v.x - c.x) * k;
     c.y += (v.y - c.y) * k;
@@ -191,14 +349,17 @@ export default function CameraRig({ rig }) {
 
     // screen-space velocity → motion blur
     const vis = visible(c.d);
-    const fps = 1 / Math.max(dt, 1 / 240);
+    const fps = 1 / Math.max(rawDt, 1 / 240);
     rig.blur.set(((c.x - prev.x) / vis.w) * (fps / 60), ((c.y - prev.y) / vis.h) * (fps / 60));
     rig.zoomBlur = ((prev.d - c.d) / c.d) * (fps / 60);
+    rig.speed = Math.hypot(c.x - prev.x, c.y - prev.y, (c.d - prev.d) * 0.5) / Math.max(rawDt, 1 / 240);
 
-    // where on the board is the pointer?
-    if (!rig.pointerActive) rig.cursor.copy(rig.home);
+    // where on the board is the torch held? On a phone it rests ahead of you
+    // unless a finger is down; with a mouse it is the pointer.
+    const resting = rig.input === "touch" && !rig.touching;
+    if (!resting && !rig.pointerActive) rig.cursor.copy(rig.home);
     else {
-      ray.current.setFromCamera(rig.pointer, camera);
+      ray.current.setFromCamera(resting ? REST : rig.pointer, camera);
       if (ray.current.ray.intersectPlane(BOARD_PLANE, hit.current)) rig.cursor.copy(hit.current);
     }
   });
