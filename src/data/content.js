@@ -6,70 +6,122 @@
 
 export const subject = {
   name: "Lakshya Kumar",
+  firstName: "Lakshya",
   alias: "Antinity",
   age: 15,
   origin: "India",
   timezone: "IST (GMT+05:30)",
   activeSince: 2020,
   photo: "/evidence/avatar.jpg",
-  photoCaption: "Last known photo",
-  role: "Full-stack developer",
-  tagline: "Obsessed with beautiful designs.",
+  role: "Full-stack developer & designer",
+  /** Lines from the prototype site's hero. */
+  headline: ["Don't you think", "I might be", "built different."],
+  intro:
+    "I'm a full-stack developer & designer. I collaborate with companies to craft memorable user experiences, bringing their vision with attention to small details.",
   bio: [
-    "15-year-old student and developer from India. Web dev since 2020.",
-    "Works with JavaScript frameworks and scalable builds, plus design tools and video editing apps — motion graphics, video editing and visual design.",
-    "Obsessed with clean UI, sharp details and fast UX.",
+    "Hello, I'm Lakshya! A developer & designer who likes playing with stuff, understanding how it works, and figuring out how to make it work better.",
+    "I enjoy building things and making them look great inside and out. I'm big on the little details too, from subtle interactions to the overall vibe an interface brings.",
+    "A lot of my ideas come from what I do in my free time: gaming, visual design, playing with computers, and occasionally dismantling them just to see how they're made.",
   ],
   traits: ["Clean UI", "Sharp details", "Fast UX", "Motion & video", "Ships fast"],
 };
 
-/** Paid / client work. `id`s are referenced by the board's red strings. */
-export const projects = [
+/**
+ * Selected works (from the prototype site's works table). `image` is a
+ * screenshot in /public/evidence, or null until one is added — the board
+ * then shows a "file pending" print instead of a fake screenshot.
+ * `id`s are referenced by the board's red strings.
+ */
+export const works = [
   {
-    id: "nexora",
-    title: "Nexora Visuals",
-    kind: "React website",
-    stack: ["React"],
-    image: "/evidence/nexoravisuals.png",
-    url: "https://nexoravisuals.vercel.app/",
-    summary:
-      "High-converting landing page for a content agency — polished UI, motion, clear service presentation and strong visual hierarchy.",
-  },
-  {
-    id: "mtt",
-    title: "Minemen Tier Tests",
-    kind: "Next.js website",
-    stack: ["Next.js"],
-    image: "/evidence/mtt.png",
-    url: "https://mtt-web.vercel.app/",
-    summary: "Full-stack website for Minemen Tier Tests, written in Next.js.",
-  },
-  {
-    id: "raam",
-    title: "Rural Advertising & Marketing",
-    kind: "VanillaJS website",
-    stack: ["JavaScript"],
-    image: "/evidence/raam.png",
-    url: "https://www.ruraladvertisingandmarketing.com/",
-    summary: "Marketing website built with vanilla JavaScript.",
-  },
-  {
-    id: "unipower",
-    title: "Unipower",
-    kind: "PHP website",
-    stack: ["PHP"],
-    image: "/evidence/unipower.png",
-    url: "https://myunipower.com/",
-    summary: "PHP-based business website.",
+    id: "ghast",
+    title: "Ghast.io",
+    location: "England",
+    services: "Development",
+    year: 2025,
+    url: "https://ghast.io/",
+    image: null,
+    summary: "Major frontend updates for a Windows network-optimisation app: a preset system, an advanced configuration panel and contextual hover tooltips, with Redux for state.",
   },
   {
     id: "mtl",
     title: "Minemen Tier List",
-    kind: "PHP website",
-    stack: ["PHP"],
-    image: "/evidence/mtl.png",
+    location: "Sri Lanka",
+    services: "Design & Development",
+    year: 2025,
     url: "https://mtl.babsoft.in/",
-    summary: "PHP-based tier list website for a Minecraft PvP community.",
+    image: "/evidence/mtl.png",
+    summary: "Tier list website for a Minecraft PvP community.",
+  },
+  {
+    id: "mtt",
+    title: "Minemen Tier Tests",
+    location: "India",
+    services: "Design & Development",
+    year: 2025,
+    url: "https://mtt-web.vercel.app/",
+    image: "/evidence/mtt.png",
+    summary: "Full-stack website for Minemen Tier Tests, written in Next.js.",
+  },
+  {
+    id: "tiertests",
+    title: "Tier Tests",
+    location: "United States",
+    services: "Design & Development",
+    year: 2025,
+    url: "https://tiertests.com/",
+    image: null,
+    summary: "A full platform: animated landing page, live results feed, store, global leaderboards across game modes, markdown resources and customisable profiles.",
+  },
+  {
+    id: "nexora",
+    title: "Nexora Visuals",
+    location: "Slovenia",
+    services: "Design & Development",
+    year: 2025,
+    url: "https://nexoravisuals.vercel.app/",
+    image: "/evidence/nexoravisuals.png",
+    summary: "Landing page for a content agency, focused on polished UI, motion, clear service presentation and strong visual hierarchy.",
+  },
+  {
+    id: "packs",
+    title: "Packs",
+    location: "United States",
+    services: "Design",
+    year: 2026,
+    url: null,
+    image: null,
+    summary: null,
+  },
+  {
+    id: "library",
+    title: "Library Page",
+    location: "India",
+    services: "Design",
+    year: 2025,
+    url: null,
+    image: null,
+    summary: null,
+  },
+  {
+    id: "cjp",
+    title: "Cockroach Janta Party",
+    location: "India",
+    services: "Design & Development",
+    year: 2026,
+    url: null,
+    image: null,
+    summary: "Official website for Cockroach Janta Party.",
+  },
+  {
+    id: "whatnow",
+    title: "WhatNow",
+    location: "India",
+    services: "Development",
+    year: 2025,
+    url: "https://whatnow-web.vercel.app",
+    image: null,
+    summary: "Career guidance platform helping students make better decisions at different stages of life.",
   },
 ];
 
@@ -190,9 +242,15 @@ export const contact = {
   timezone: "IST (GMT+05:30)",
 };
 
+/**
+ * Socials. `icon` socials get a paper icon on the board; a null `url` is not
+ * clickable yet. TODO: fill in Instagram, LinkedIn and WhatsApp.
+ */
 export const socials = [
+  { id: "x", label: "X", handle: "@antinityfx", url: "https://x.com/antinityfx", icon: true },
+  { id: "instagram", label: "Instagram", handle: "TODO", url: null, icon: true },
+  { id: "linkedin", label: "LinkedIn", handle: "TODO", url: null, icon: true },
+  { id: "whatsapp", label: "WhatsApp", handle: "TODO", url: null, icon: true },
   { id: "github", label: "GitHub", handle: "Antinity", url: "https://github.com/antinity" },
   { id: "discord", label: "Discord", handle: "antinity", url: "https://discord.com/users/255322229062107136" },
-  { id: "server", label: "Discord server", handle: "discord.gg/SaHkUuWc2K", url: "https://discord.gg/SaHkUuWc2K" },
-  { id: "x", label: "X", handle: "@antinityfx", url: "https://x.com/antinityfx" },
 ];

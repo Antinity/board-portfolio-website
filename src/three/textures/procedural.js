@@ -128,7 +128,10 @@ export function torchCookie() {
   c.fillStyle = "#000";
   c.fillRect(0, 0, S, S);
 
-  // radial brightness profile, as a fraction of the cone radius
+  // radial brightness profile, as a fraction of the cone radius. The bright
+  // disc fills the inner ~46%; beyond it a very faint spill reaches almost to
+  // the cone edge, so most of the board reads as softly lit around the beam.
+  const D = 0.46; // disc radius as a fraction of the cone
   const g = c.createRadialGradient(m, m, 0, m, m, m);
   [
     [0, 0.5], // the bulb's dark centre
@@ -146,17 +149,25 @@ export function torchCookie() {
     [0.8, 0.6],
     [0.86, 0.55],
     [0.9, 0.42], // crisp but not razor edge
-    [0.925, 0.12],
-    [0.945, 0],
-    [1, 0],
-  ].forEach(([at, v]) => g.addColorStop(at, `rgba(255,255,255,${v})`));
+    [0.93, 0.16],
+  ]
+    .map(([at, v]) => [at * D, v])
+    .concat([
+      [D * 0.96, 0.13], // faint outer spill…
+      [0.62, 0.11],
+      [0.8, 0.075],
+      [0.92, 0.03],
+      [0.97, 0], // …fading out before the cone edge
+      [1, 0],
+    ])
+    .forEach(([at, v]) => g.addColorStop(at, `rgba(255,255,255,${v})`));
   c.fillStyle = g;
   c.fillRect(0, 0, S, S);
 
   // soft, slightly irregular reflector ripples
   c.globalCompositeOperation = "multiply";
   for (let i = 0; i < 10; i++) {
-    const rad = m * (0.1 + i * 0.075);
+    const rad = m * 0.46 * (0.1 + i * 0.075);
     c.strokeStyle = `rgba(0,0,0,${0.03 + r() * 0.04})`;
     c.lineWidth = 6 + r() * 10;
     c.filter = "blur(4px)";
@@ -169,7 +180,7 @@ export function torchCookie() {
   // a few faint specks of dust on the lens
   for (let i = 0; i < 9; i++) {
     const a = r() * Math.PI * 2;
-    const d = r() * m * 0.8;
+    const d = r() * m * 0.38;
     const x = m + Math.cos(a) * d;
     const y = m + Math.sin(a) * d;
     const rad = 2 + r() * 5;
@@ -183,5 +194,62 @@ export function torchCookie() {
   c.globalCompositeOperation = "source-over";
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/**
+ * Frame stock in the prototype site's identity: deep navy with cloudy
+ * mottling and a faint sage grid. Mapped across the whole frame face.
+ */
+export function navyFrameTexture(drawSurface) {
+  const W = 2048;
+  const H = 1280;
+  const cv = makeCanvas(W, H);
+  drawSurface(cv.getContext("2d"), W, H, rng(31));
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 16;
+  return t;
+}
+
+/** Vertical wood grain for the side planks, with a couple of knots. */
+export function woodTexture() {
+  const W = 256;
+  const H = 2048;
+  const cv = makeCanvas(W, H);
+  const c = cv.getContext("2d");
+  const r = rng(41);
+  const base = c.createLinearGradient(0, 0, W, 0);
+  base.addColorStop(0, "#4a2f1b");
+  base.addColorStop(0.5, "#6a4428");
+  base.addColorStop(1, "#4d311d");
+  c.fillStyle = base;
+  c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) {
+    let x = r() * W;
+    c.strokeStyle = r() < 0.5 ? `rgba(30,16,6,${0.15 + r() * 0.25})` : `rgba(160,110,60,${0.08 + r() * 0.15})`;
+    c.lineWidth = 0.6 + r() * 2.4;
+    c.beginPath();
+    c.moveTo(x, 0);
+    for (let y = 0; y <= H; y += 32) {
+      x += (r() - 0.5) * 3;
+      c.lineTo(x + Math.sin(y * 0.004 + i) * 4, y);
+    }
+    c.stroke();
+  }
+  for (let k = 0; k < 2; k++) {
+    const kx = W * (0.3 + r() * 0.4);
+    const ky = H * (0.2 + r() * 0.6);
+    for (let i = 0; i < 9; i++) {
+      c.strokeStyle = `rgba(35,18,8,${0.5 - i * 0.045})`;
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.ellipse(kx, ky, 6 + i * 5, 14 + i * 13, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 16;
   return t;
 }

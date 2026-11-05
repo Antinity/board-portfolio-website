@@ -11,7 +11,9 @@ import { damp } from "../rig";
 import { Pin, Tape } from "./Fasteners";
 
 const READ_DIST = 1.6; // how far in front of the camera a page is held to read
-const HOVER_OPACITY = 0.045;
+const HOVER_OPACITY = 0.08;
+const PICK_UP_SECONDS = 1.15;
+const PUT_BACK_SECONDS = 1.6;
 const READ_TILT = { x: 0.07, y: 0.1 }; // max paper tilt toward the pointer while reading (radians)
 
 /**
@@ -76,7 +78,8 @@ const FASTENERS = {
   ],
 };
 
-const smooth = (t) => t * t * (3 - 2 * t);
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const clamp01 = (t) => Math.min(1, Math.max(0, t));
 const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fwd: new THREE.Vector3(), right: new THREE.Vector3() };
 const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-1.2)));
 const tiltEuler = new THREE.Euler();
@@ -108,6 +111,8 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const overlay = useMemo(() => (painted ? overlayMaterial(painted.texture) : null), [painted]);
   const group = useRef(null);
   const fasteners = useRef(null);
+  const pinsRef = useRef(null);
+  const tapePeel = useRef(null);
   const material = useRef(null);
   const state = useRef({ t: 0, hover: 0, hovered: false, tiltX: 0, tiltY: 0 });
   const readable = item.readable !== false;
@@ -149,12 +154,16 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     s.hover += (wantHover - s.hover) * damp(14, dt);
     if (overlay) overlay.uniforms.opacity.value = s.hover;
 
-    // lift off the board ↔ held up to read
+    // Taking a page off the board is a short sequence on one timeline:
+    // pins pull out and the tape peels up, then the page lifts and turns to
+    // face the viewer. Putting it back plays the same timeline in reverse,
+    // a little slower.
     const target = selected ? 1 : 0;
     if (s.t === target && !selected) return;
-    s.t += (target - s.t) * damp(selected ? 4.5 : 6, dt);
-    if (Math.abs(target - s.t) < 0.0005) s.t = target;
-    const e = smooth(s.t);
+    const rate = dt / (selected ? PICK_UP_SECONDS : PUT_BACK_SECONDS);
+    s.t = selected ? Math.min(1, s.t + rate) : Math.max(0, s.t - rate);
+    const release = easeInOutCubic(clamp01(s.t / 0.24));
+    const e = easeInOutCubic(clamp01((s.t - 0.16) / 0.84));
 
     const fov = THREE.MathUtils.degToRad(camera.fov);
     const visH = 2 * READ_DIST * Math.tan(fov / 2);
@@ -175,10 +184,15 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     tmp.quat.copy(camera.quaternion).multiply(TILT).multiply(tiltQuat);
 
     g.position.lerpVectors(board.pos, tmp.pos, e);
-    g.position.z += Math.sin(e * Math.PI) * 0.6; // arc toward the viewer
+    g.position.z += Math.sin(e * Math.PI) * 0.45; // arc toward the viewer
     g.quaternion.slerpQuaternions(board.quat, tmp.quat, e);
     g.scale.setScalar(THREE.MathUtils.lerp(1, scale, e));
-    if (fasteners.current) fasteners.current.visible = s.t < 0.02;
+    if (pinsRef.current) {
+      pinsRef.current.position.z = release * 0.22; // pulled out
+      pinsRef.current.visible = release < 0.98;
+    }
+    if (tapePeel.current) tapePeel.current.rotation.x = release * 1.25; // peeled up off the cork
+    if (fasteners.current) fasteners.current.visible = e < 0.35;
     if (material.current) material.current.emissiveIntensity = e * 0.72; // readable even in the dark
 
     if (selected || s.t > 0.001) {
@@ -242,11 +256,18 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
       </mesh>
       {overlay && <mesh geometry={geometry} material={overlay} renderOrder={2} />}
       <group ref={fasteners}>
-        {pins.map((at) => (
-          <Pin key={at.join()} position={[...local(item, at), 0.004]} color={Math.floor(r() * 6)} />
-        ))}
+        <group ref={pinsRef}>
+          {pins.map((at) => (
+            <Pin key={at.join()} position={[...local(item, at), 0.004]} color={Math.floor(r() * 6)} />
+          ))}
+        </group>
         {fasten === "tape" && (
-          <Tape position={[0, (item.h * UNIT) / 2 - 0.02, 0.01]} rot={(r() - 0.5) * 0.2} width={Math.min(1.1, item.w * UNIT * 0.4)} />
+          <Tape
+            peelRef={tapePeel}
+            position={[0, (item.h * UNIT) / 2, 0.01]}
+            rot={(r() - 0.5) * 0.2}
+            width={Math.min(1.1, item.w * UNIT * 0.4)}
+          />
         )}
       </group>
     </group>

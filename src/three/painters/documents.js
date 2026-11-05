@@ -1,39 +1,41 @@
-import { contact, socials, subject } from "@/data/content";
+import { subject } from "@/data/content";
 import { todoLineY } from "@/data/boardLayout";
 import { INK, bareUrl, coffeeRing, field, font, linkText, paperBase, scribbleLine, silhouette, stamp, wrapText } from "./common";
 
 /* Typed and handwritten paper documents. */
 
 export const dossier = {
+  /** Landscape fact sheet under the poster: the record, typed. */
   paint(ctx, { w, h }, { fonts, r }) {
-    paperBase(ctx, w, h, { color: "#efe9da", r, stains: 0 });
-    coffeeRing(ctx, w * 0.78, h * 0.86, 42, r);
+    paperBase(ctx, w, h, { color: "#efe9da", r });
+    coffeeRing(ctx, w * 0.9, h * 0.72, 34, r);
+    const pad = 28;
 
     ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.display, 26, 700);
-    ctx.fillText("SUBJECT FILE", 30, 54);
-    ctx.font = font(fonts.type, 14);
-    ctx.fillText(`REF. ${subject.alias.toUpperCase()}-${subject.activeSince}`, 30, 76);
-    ctx.fillRect(30, 88, w - 60, 2);
+    ctx.font = font(fonts.display, 24, 700);
+    ctx.fillText("SUBJECT FILE", pad, 46);
+    ctx.font = font(fonts.type, 13);
+    ctx.fillText(`REF. ${subject.alias.toUpperCase()}-${subject.activeSince}`, pad + 170, 45);
+    ctx.fillRect(pad, 58, w - pad * 2, 2);
 
-    let y = 116;
-    const half = (w - 80) / 2;
-    field(ctx, "Name", subject.name, 30, y, half, fonts);
-    y = field(ctx, "Alias", subject.alias, 50 + half, y, half, fonts);
-    field(ctx, "Age", String(subject.age), 30, y, half, fonts);
-    y = field(ctx, "Origin", subject.origin, 50 + half, y, half, fonts);
-    field(ctx, "Active since", String(subject.activeSince), 30, y, half, fonts);
-    y = field(ctx, "Timezone", "IST +5:30", 50 + half, y, half, fonts);
-    y = field(ctx, "Occupation", subject.role, 30, y, w - 60, fonts);
+    const cols = 3;
+    const cw = (w - pad * 2 - (cols - 1) * 26) / cols;
+    const rows = [
+      ["Name", subject.name],
+      ["Alias", subject.alias],
+      ["Age", String(subject.age)],
+      ["Origin", subject.origin],
+      ["Timezone", "IST +5:30"],
+      ["Active since", String(subject.activeSince)],
+    ];
+    rows.forEach(([k, v], i) => {
+      const x = pad + (i % cols) * (cw + 26);
+      const y = 84 + Math.floor(i / cols) * 58;
+      field(ctx, k, v, x, y, cw, fonts, { valueSize: 19 });
+    });
+    field(ctx, "Occupation", subject.role, pad, 84 + 2 * 58, w - pad * 2 - 160, fonts, { valueSize: 19 });
 
-    ctx.fillStyle = "rgba(40,36,30,0.55)";
-    ctx.font = font(fonts.display, 12, 500);
-    ctx.fillText("NOTES", 30, y + 4);
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 15);
-    wrapText(ctx, subject.bio.join(" "), 30, y + 26, w - 60, 21, { maxLines: 5 });
-
-    stamp(ctx, "CLASSIFIED", w - 112, 52, { f: fonts.display, size: 22, rot: 0.14, r });
+    stamp(ctx, "CLASSIFIED", w - 112, 40, { f: fonts.display, size: 20, rot: 0.12, r });
   },
 };
 
@@ -120,9 +122,9 @@ export const crew = {
 
     let y = pad + 56;
     const fw = photoX - pad - 14;
-    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: 17 });
-    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: 17 });
-    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: 17 });
+    y = field(ctx, "Name", witness.name, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
+    y = field(ctx, "Role", witness.role, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
+    y = field(ctx, "Organisation", witness.org, pad, y, fw, fonts, { valueSize: w < 280 ? 15 : 17 });
 
     y += 6;
     ctx.fillStyle = "rgba(40,36,30,0.55)";
@@ -178,64 +180,5 @@ export const indexcard = {
     const link = linkText(ctx, bareUrl(job.url), w - 22, h - 16, job.url);
     ctx.textAlign = "left";
     return [link];
-  },
-};
-
-export const flyer = {
-  /** Tear-off tabs along the bottom; one has already been taken. */
-  alpha: true,
-  paint(ctx, { w, h }, { fonts, r }) {
-    const tabsTop = h * 0.64;
-    const tabs = 8;
-    const tabW = w / tabs;
-    const missing = 3;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, w, tabsTop);
-    for (let i = 0; i < tabs; i++) if (i !== missing) ctx.rect(i * tabW + 1.5, tabsTop, tabW - 3, h - tabsTop);
-    ctx.clip();
-    paperBase(ctx, w, h, { color: "#f3f0e6", r, shade: 0.06 });
-    ctx.restore();
-
-    ctx.fillStyle = INK.black;
-    ctx.textAlign = "center";
-    ctx.font = font(fonts.display, 34, 700);
-    ctx.fillText("LET'S WORK TOGETHER!", w / 2, 48);
-    const links = [];
-    ctx.fillStyle = INK.red;
-    ctx.font = font(fonts.marker, 22);
-    links.push(linkText(ctx, contact.email, w / 2, 84, `mailto:${contact.email}`, { underline: false }));
-    ctx.fillStyle = INK.type;
-    ctx.font = font(fonts.type, 13);
-    const shown = socials.filter((s) => s.id !== "server");
-    shown.forEach((s, i) => {
-      const x = (w / (shown.length + 1)) * (i + 1);
-      links.push(linkText(ctx, `${s.label}: ${s.handle}`, x, 116, s.url));
-    });
-    ctx.font = font(fonts.type, 11);
-    ctx.fillText(`Replies in ${contact.timezone}`, w / 2, 142);
-    ctx.textAlign = "left";
-
-    // perforation
-    ctx.strokeStyle = "rgba(0,0,0,0.35)";
-    ctx.setLineDash([3, 4]);
-    ctx.beginPath();
-    ctx.moveTo(0, tabsTop);
-    ctx.lineTo(w, tabsTop);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.font = font(fonts.type, 9.5);
-    ctx.fillStyle = INK.type;
-    for (let i = 0; i < tabs; i++) {
-      if (i === missing) continue;
-      ctx.save();
-      ctx.translate(i * tabW + tabW / 2 + 3, h - 6);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillText(contact.email, 0, 0, h - tabsTop - 12);
-      ctx.restore();
-    }
-    return links;
   },
 };

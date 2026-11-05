@@ -1,11 +1,18 @@
 import { BOARD } from "@/data/boardLayout";
 
-/** World units per board pixel. The board is 24 × 14 world units. */
+/** World units per board pixel (100 board px = 1 world unit). */
 export const UNIT = 1 / 100;
 
 export const BOARD_W = BOARD.width * UNIT;
 export const BOARD_H = BOARD.height * UNIT;
 export const FRAME = BOARD.frame * UNIT;
+
+/** Wooden planks screwed over the left and right edges of the frame. */
+export const PLANK = { width: 1.15, overlap: 0.4, overhang: 0.9, depth: 0.2 };
+
+/** Half-extents of everything mounted on the wall (board + frame + planks). */
+export const OUTER_HALF_W = BOARD_W / 2 + FRAME + PLANK.width - PLANK.overlap;
+export const OUTER_HALF_H = BOARD_H / 2 + FRAME + PLANK.overhang;
 
 /** Height of each stacking layer above the cork (world units). */
 export const LAYER = 0.012;

@@ -1,4 +1,4 @@
-import { Caveat, Oswald, Permanent_Marker, Special_Elite } from "next/font/google";
+import { Bricolage_Grotesque, Caveat, Oswald, Permanent_Marker, Special_Elite } from "next/font/google";
 import { subject } from "@/data/content";
 import "./globals.css";
 
@@ -6,6 +6,7 @@ const typewriter = Special_Elite({ variable: "--font-type", weight: "400", subse
 const marker = Permanent_Marker({ variable: "--font-marker", weight: "400", subsets: ["latin"] });
 const hand = Caveat({ variable: "--font-hand", subsets: ["latin"] });
 const display = Oswald({ variable: "--font-display", subsets: ["latin"] });
+const brand = Bricolage_Grotesque({ variable: "--font-brand", subsets: ["latin"] });
 
 export const metadata = {
   title: `${subject.name} (${subject.alias}) — Case File`,
@@ -18,7 +19,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${typewriter.variable} ${marker.variable} ${hand.variable} ${display.variable}`}>
+    <html lang="en" className={`${typewriter.variable} ${marker.variable} ${hand.variable} ${display.variable} ${brand.variable}`}>
       <body>{children}</body>
     </html>
   );

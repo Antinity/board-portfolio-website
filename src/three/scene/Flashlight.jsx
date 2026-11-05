@@ -9,8 +9,8 @@ import { torchCookie } from "../textures/procedural";
 const TORCH = {
   color: "#d4e4ff", // cool LED white-blue
   intensity: 2.6, // overall brightness
-  radius: 5.6, // beam radius on the board, world units — constant at every zoom
-  minThrow: 13, // the torch is never closer to the board than this (keeps the cone narrow)
+  radius: 12.2, // cone radius on the board, world units (bright disc ≈ 46% of it, faint spill beyond) — constant at every zoom
+  minThrow: 20, // the torch is never closer to the board than this (keeps the cone narrow)
   hold: new Vector3(0.35, -0.5, 0), // offset from the eye, world units
   smoothTime: 0.055, // seconds to catch up with the pointer (it *is* the cursor)
   maxSpeed: 80, // world units / second
@@ -78,10 +78,13 @@ export default function Flashlight({ rig, on = true }) {
     );
     target.updateMatrixWorld();
 
-    // held near the eye, but never so close that the cone has to splay wide
+    // held near the eye, but never so close that the cone has to splay wide;
+    // while reading, it comes from straight behind the eye so the beam lands
+    // in the middle of the page rather than off to one side
+    const hold = 1 - rig.readT;
     l.position.set(
-      camera.position.x + TORCH.hold.x,
-      camera.position.y + TORCH.hold.y,
+      camera.position.x + TORCH.hold.x * hold,
+      camera.position.y + TORCH.hold.y * hold,
       Math.max(camera.position.z, TORCH.minThrow)
     );
 

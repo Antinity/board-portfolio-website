@@ -26,14 +26,21 @@ const Fields = ({ rows }) => (
 );
 
 const TRANSCRIPTS = {
-  polaroid: () => ({
-    title: subject.photoCaption,
+  poster: () => ({
+    title: subject.name,
     body: (
-      <p>
-        Polaroid, pinned at the centre of the board. Written on the border: “{subject.photoCaption}”. Identified as{" "}
-        <strong>{subject.name}</strong>, alias <strong>{subject.alias}</strong>.
-      </p>
+      <>
+        <p>
+          Hey, I&apos;m {subject.firstName} — {subject.role}. {subject.headline.join(" ")}
+        </p>
+        <p>{subject.intro}</p>
+      </>
     ),
+  }),
+
+  polaroid: () => ({
+    title: subject.name,
+    body: <p>Polaroid of {subject.name} ({subject.alias}), pinned to the centre of the board.</p>,
   }),
 
   dossier: () => ({
@@ -54,26 +61,28 @@ const TRANSCRIPTS = {
         {subject.bio.map((p) => (
           <p key={p}>{p}</p>
         ))}
-        <p>Known traits: {subject.traits.join(" · ")}</p>
       </>
     ),
   }),
 
   sticky: (item) => ({
     title: "Sticky note",
-    body: <p>{item.props.text.replace("\n", " ")}</p>,
+    body: <p>{item.props.text.replace(/\n/g, " ")}</p>,
   }),
 
-  print: ({ props: { project } }) => ({
-    title: project.title,
+  print: ({ props: { work } }) => ({
+    title: work.title,
     body: (
       <>
-        <p>{project.kind}</p>
-        <p>{project.summary}</p>
-        <p>Built with: {project.stack.join(", ")}</p>
         <p>
-          <Link href={project.url}>{bare(project.url)} →</Link>
+          {work.location} · {work.services} · {work.year}
         </p>
+        {work.summary && <p>{work.summary}</p>}
+        {work.url && (
+          <p>
+            <Link href={work.url}>{bare(work.url)}</Link>
+          </p>
+        )}
       </>
     ),
   }),
@@ -89,7 +98,7 @@ const TRANSCRIPTS = {
         {list.map((op) => (
           <div key={op.id}>
             <h4>
-              {op.done ? "☑" : "☐"} <Link href={op.url}>{op.title}</Link>
+              <Link href={op.url}>{op.title}</Link>
             </h4>
             <p>{op.summary}</p>
           </div>
@@ -136,24 +145,29 @@ const TRANSCRIPTS = {
         </ul>
         {job.url && (
           <p>
-            <Link href={job.url}>{bare(job.url)} →</Link>
+            <Link href={job.url}>{bare(job.url)}</Link>
           </p>
         )}
       </>
     ),
   }),
 
-  flyer: () => ({
+  contactcard: () => ({
     title: contact.note,
     body: (
       <>
         <p>
           <Link href={`mailto:${contact.email}`}>{contact.email}</Link>
         </p>
-        <Fields rows={socials.map((s) => [s.label, <Link key={s.id} href={s.url}>{s.handle}</Link>])} />
+        <Fields rows={socials.filter((s) => s.url).map((s) => [s.label, <Link key={s.id} href={s.url}>{s.handle}</Link>])} />
         <p>Replies in {contact.timezone}.</p>
       </>
     ),
+  }),
+
+  social: ({ props: { social } }) => ({
+    title: social.label,
+    body: <p>{social.url ? <Link href={social.url}>{social.handle}</Link> : "Link coming soon."}</p>,
   }),
 };
 

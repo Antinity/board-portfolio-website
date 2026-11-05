@@ -1,6 +1,6 @@
 /**
  * Board layout, authored in "board pixels" (origin top-left, y down) on a
- * 2800 × 1560 cork surface. The 3D scene converts these to world units.
+ * 2800 × 1640 cork surface. The 3D scene converts these to world units.
  *
  *  - SECTIONS: named groups (tape headings; used for accessible names)
  *  - ITEMS:    every piece of paper / photo on the board
@@ -10,29 +10,29 @@
  * (src/reading/transcripts.jsx). `fasten`: "pin" (default) | "tape" | "pins" | "none".
  * `readable: false` keeps an item out of the reading view (e.g. headings).
  *
- * Organised like a heist planning board, in three rows:
- *   Witnesses · The Subject · To Do
- *   Approach  · Record      · Contact
- *   The Jobs (full width)
+ *   Witnesses │                │ To Do
+ *   Record    │  THE SUBJECT   │
+ *   Approach  │  (poster)      │ Contact
+ *   ─────────────── The Jobs (nine prints) ───────────────
  */
 
-import { experience, operations, projects, stack, witnesses } from "./content";
+import { experience, operations, socials, stack, witnesses, works } from "./content";
 
-export const BOARD = { width: 2800, height: 1560, frame: 36 };
+export const BOARD = { width: 2800, height: 1640, frame: 70 };
 
 export const SECTIONS = {
   subject: { exhibit: "A", title: "The Subject" },
-  witnesses: { exhibit: "B", title: "Witnesses" },
-  todo: { exhibit: "C", title: "To Do" },
-  approach: { exhibit: "D", title: "Approach" },
-  record: { exhibit: "E", title: "Record" },
-  contact: { exhibit: "F", title: "Contact" },
-  jobs: { exhibit: "G", title: "The Jobs" },
+  jobs: { exhibit: "B", title: "The Jobs" },
+  witnesses: { exhibit: "C", title: "Witnesses" },
+  record: { exhibit: "D", title: "Record" },
+  approach: { exhibit: "E", title: "Approach" },
+  todo: { exhibit: "F", title: "To Do" },
+  contact: { exhibit: "G", title: "Contact" },
 };
 
-/** Grid: three columns, three rows (board px). */
-const COL = { a: { x: 80, w: 940 }, b: { x: 1080, w: 820 }, c: { x: 1960, w: 760 } };
-const ROW = { top: 60, middle: 650, bottom: 1030 };
+/** Grid: three columns over a full-width bottom row (board px). */
+const COL = { a: { x: 70, w: 860 }, b: { x: 990, w: 820 }, c: { x: 1870, w: 860 } };
+const FULL = { x: 70, w: 2660 };
 const HEADING_H = 58;
 
 /** Tape heading centred over a column (or any span). */
@@ -61,86 +61,93 @@ const spread = (span, n, w) => {
   return Array.from({ length: n }, (_, i) => span.x + gap + i * (w + gap));
 };
 
-const project = (id) => projects.find((p) => p.id === id);
-const PRINT_W = 400;
-const printH = (img = 530 / 750) => Math.round(PRINT_W * img + 76);
-const JOBS_ORDER = ["mtl", "mtt", "nexora", "raam", "unipower"];
-const FULL = { x: 80, w: 2640 };
+const PRINT_W = 270;
+const PRINT_H = Math.round(PRINT_W * 0.706 + 87);
+const iconSocials = socials.filter((s) => s.icon);
 
 export const ITEMS = [
-  // ---------- Top row ----------
-  heading("witnesses", COL.a, ROW.top),
+  // ---------- Centre: the subject ----------
+  { id: "subject-poster", section: "subject", kind: "poster", x: 1250, y: 120, w: 530, h: 620, rot: 0.5, z: 1, fasten: "pins" },
+  { id: "subject-photo", section: "subject", kind: "polaroid", x: 1015, y: 270, w: 270, h: 324, rot: -4, z: 2, props: { photo: "subject" } },
+  { id: "subject-dossier", section: "subject", kind: "dossier", x: 1040, y: 815, w: 730, h: 270, rot: -0.4, z: 1, fasten: "tape" },
+
+  // ---------- Left column ----------
+  heading("witnesses", COL.a, 50),
   ...witnesses.map((witness, i) => ({
     id: `witness-${witness.id}`,
     section: "witnesses",
     kind: "crew",
-    x: spread(COL.a, witnesses.length, 280)[i],
-    y: ROW.top + 80,
-    w: 280,
-    h: 400,
+    x: spread(COL.a, witnesses.length, 255)[i],
+    y: 120,
+    w: 255,
+    h: 350,
     rot: [-0.6, 0.4, -0.3][i],
     z: 1,
     fasten: "pins",
     props: { witness },
   })),
 
-  heading("subject", COL.b, ROW.top),
-  { id: "subject-photo", section: "subject", kind: "polaroid", x: 1110, y: ROW.top + 90, w: 300, h: 360, rot: -1, z: 1, props: { photo: "subject" } },
-  { id: "subject-dossier", section: "subject", kind: "dossier", x: 1440, y: ROW.top + 80, w: 430, h: 470, rot: 0.6, z: 1, fasten: "tape" },
-  { id: "subject-alias", section: "subject", kind: "sticky", x: 1200, y: ROW.top + 400, w: 150, h: 130, rot: -4, z: 3, fasten: "none", props: { text: "a.k.a.\nANTINITY", color: "yellow" } },
-
-  heading("todo", COL.c, ROW.top),
-  { id: "todo-list", section: "todo", kind: "todo", x: 2010, y: ROW.top + 85, w: 660, h: 450, rot: 0.4, z: 1, fasten: "tape", props: { items: operations } },
-
-  // ---------- Middle row ----------
-  heading("approach", COL.a, ROW.middle),
-  ...stack.map((group, i) => ({
-    id: `stack-${group.group.toLowerCase()}`,
-    section: "approach",
-    kind: "tag",
-    x: spread(COL.a, stack.length, 205)[i],
-    y: ROW.middle + 80,
-    w: 205,
-    h: 250,
-    rot: [-0.8, 0.6, -0.4, 0.8][i],
-    z: 1,
-    props: { group },
-  })),
-
-  heading("record", COL.b, ROW.middle),
+  heading("record", COL.a, 515),
   ...experience.map((job, i) => ({
     id: `record-${job.id}`,
     section: "record",
     kind: "indexcard",
-    x: spread(COL.b, experience.length, 385)[i],
-    y: ROW.middle + 85,
-    w: 385,
-    h: 230,
+    x: spread(COL.a, experience.length, 400)[i],
+    y: 585,
+    w: 400,
+    h: 215,
     rot: i ? 0.6 : -0.6,
     z: 1,
     props: { job },
   })),
 
-  heading("contact", COL.c, ROW.middle),
-  { id: "contact-flyer", section: "contact", kind: "flyer", x: COL.c.x + (COL.c.w - 480) / 2, y: ROW.middle + 80, w: 480, h: 290, rot: -0.5, z: 1 },
+  heading("approach", COL.a, 840),
+  ...stack.map((group, i) => ({
+    id: `stack-${group.group.toLowerCase()}`,
+    section: "approach",
+    kind: "tag",
+    x: spread(COL.a, stack.length, 195)[i],
+    y: 910,
+    w: 195,
+    h: 235,
+    rot: [-0.8, 0.6, -0.4, 0.8][i],
+    z: 1,
+    props: { group },
+  })),
 
-  // ---------- Bottom row ----------
-  heading("jobs", FULL, ROW.bottom),
-  ...JOBS_ORDER.map((id, i) => {
-    const p = project(id);
-    return {
-      id: `job-${id}`,
-      section: "jobs",
-      kind: "print",
-      x: spread(FULL, JOBS_ORDER.length, PRINT_W)[i],
-      y: ROW.bottom + 90,
-      w: PRINT_W,
-      h: printH(id === "nexora" ? 451 / 750 : undefined),
-      rot: [0.6, -0.5, 0.4, -0.6, 0.5][i],
-      z: 1,
-      props: { project: p },
-    };
-  }),
+  // ---------- Right column ----------
+  heading("todo", COL.c, 50),
+  { id: "todo-list", section: "todo", kind: "todo", x: COL.c.x + (COL.c.w - 640) / 2, y: 120, w: 640, h: 440, rot: 0.4, z: 1, fasten: "tape", props: { items: operations } },
+
+  heading("contact", COL.c, 620),
+  { id: "contact-card", section: "contact", kind: "contactcard", x: 1905, y: 695, w: 480, h: 300, rot: -0.6, z: 1, fasten: "pins" },
+  ...iconSocials.map((social, i) => ({
+    id: `social-${social.id}`,
+    section: "contact",
+    kind: "social",
+    x: 2425 + (i % 2) * 150,
+    y: 700 + Math.floor(i / 2) * 150,
+    w: 125,
+    h: 125,
+    rot: [-4, 3, 2.5, -3][i],
+    z: 1,
+    props: { social },
+  })),
+
+  // ---------- Bottom row: the jobs ----------
+  heading("jobs", FULL, 1210),
+  ...works.map((work, i) => ({
+    id: `job-${work.id}`,
+    section: "jobs",
+    kind: "print",
+    x: spread(FULL, works.length, PRINT_W)[i],
+    y: 1285,
+    w: PRINT_W,
+    h: PRINT_H,
+    rot: [0.6, -0.5, 0.4, -0.6, 0.5, -0.4, 0.6, -0.5, 0.4][i % 9],
+    z: 1,
+    props: { work },
+  })),
 ];
 
 /** Vertical position (fraction) of to-do line `i` — must match the todo painter. */
@@ -148,24 +155,20 @@ export function todoLineY(i) {
   return 0.29 + i * 0.105;
 }
 
-const todoLine = (opId) => [0.075, todoLineY(operations.findIndex((o) => o.id === opId))];
-
 /**
- * Red strings between related evidence — kept few and purposeful.
+ * Red strings between related evidence — kept few, short and purposeful.
  * Each end names an item and, optionally, where on it the pin sits
  * (`at`: fractions of width / height, default top-centre).
  */
 export const LINKS = [
-  // Ghast.io: the client who vouched ↔ the job ↔ the shipped item
-  { from: { item: "witness-jbablestime", at: [0.5, 0.97] }, to: { item: "record-ghast", at: [0.1, 0.12] } },
-  { from: { item: "record-ghast", at: [0.9, 0.12] }, to: { item: "todo-list", at: todoLine("op-ghast") } },
-  // Minemen community: tier list owner ↔ tier list ↔ tier tests
-  { from: { item: "witness-nsrd", at: [0.5, 0.97] }, to: { item: "job-mtl", at: [0.5, 0.05] } },
-  { from: { item: "job-mtl", at: [0.95, 0.3] }, to: { item: "job-mtt", at: [0.05, 0.3] } },
-  // Freelance record ↔ the client who hired him
-  { from: { item: "witness-zackaria", at: [0.5, 0.97] }, to: { item: "record-freelance", at: [0.5, 0.06] } },
-  // The subject ↔ how to reach him
-  { from: { item: "subject-dossier", at: [0.92, 0.94] }, to: { item: "contact-flyer", at: [0.5, 0.05] } },
+  // clients who vouched ↔ the work they hired him for
+  { from: { item: "witness-jbablestime", at: [0.5, 0.97] }, to: { item: "record-ghast", at: [0.3, 0.06] } },
+  { from: { item: "witness-nsrd", at: [0.5, 0.97] }, to: { item: "record-freelance", at: [0.25, 0.06] } },
+  { from: { item: "witness-zackaria", at: [0.5, 0.97] }, to: { item: "record-freelance", at: [0.7, 0.06] } },
+  // the Minemen community: tier list ↔ tier tests
+  { from: { item: "job-mtl", at: [0.92, 0.3] }, to: { item: "job-mtt", at: [0.08, 0.3] } },
+  // the subject ↔ how to reach him
+  { from: { item: "subject-dossier", at: [0.97, 0.5] }, to: { item: "contact-card", at: [0.06, 0.5] } },
 ];
 export const itemById = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
@@ -173,4 +176,4 @@ export const itemById = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 export const READABLE = ITEMS.filter((i) => i.readable !== false);
 
 /** Where the torch rests before the visitor moves the pointer. */
-export const HOME_ITEM = "subject-dossier";
+export const HOME_ITEM = "subject-poster";

@@ -1,7 +1,7 @@
 # Antinity — Investigation Board Portfolio
 
 Lakshya Kumar's portfolio as a 3D evidence board in a moonlit room, laid out like a heist
-planning board. The torch is the cursor; hover a document to highlight it, click to pick it up
+planning board around a poster of the subject, framed in the navy/sage identity of his site. The torch is the cursor; hover a document to highlight it, click to pick it up
 and read it — like the notes and letters in Resident Evil or The Last of Us. Links printed on a
 page (sites, email, socials) are clickable while it's held up.
 
@@ -18,7 +18,7 @@ npm run dev
 
 | What                                   | File                                         |
 | -------------------------------------- | -------------------------------------------- |
-| Everything the board says about you    | `src/data/content.js`                        |
+| Everything the board says about you    | `src/data/content.js` (works, socials — fill the TODO social links) |
 | What's pinned where + red strings      | `src/data/boardLayout.js`                    |
 | How a piece of evidence is drawn       | `src/three/painters/*`                       |
 | Screen-reader transcripts              | `src/reading/transcripts.jsx`                |

@@ -48,7 +48,7 @@ export default function PostFX({ rig, quality = "high" }) {
       <primitive object={motionBlur} />
       <primitive object={lens} />
       <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.12} />
-      <Vignette offset={0.26} darkness={0.72} />
+      <Vignette offset={0.3} darkness={0.55} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   );

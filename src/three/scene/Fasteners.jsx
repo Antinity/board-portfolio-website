@@ -56,13 +56,26 @@ function getTapeTexture() {
   return tapeTexture;
 }
 
-/** Strip of masking tape, centred at `position`, rotated `rot` radians. */
-export function Tape({ position, rot = 0, width = 1 }) {
+/**
+ * Strip of masking tape across a paper edge. `position` is the hinge — the
+ * point on the paper's edge the tape straddles. The half stuck to the cork
+ * sits on a pivot (`peelRef`) so it can be peeled up when the page is taken.
+ */
+export function Tape({ position, rot = 0, width = 1, peelRef }) {
   const map = useMemo(() => getTapeTexture(), []);
+  const h = width * 0.3;
   return (
-    <mesh position={position} rotation={[0, 0, rot]} receiveShadow>
-      <planeGeometry args={[width, width * 0.3]} />
-      <meshStandardMaterial map={map} transparent roughness={0.6} depthWrite={false} />
-    </mesh>
+    <group position={position} rotation={[0, 0, rot]}>
+      <mesh position={[0, -h / 4, 0]} receiveShadow>
+        <planeGeometry args={[width, h / 2]} />
+        <meshStandardMaterial map={map} transparent roughness={0.6} depthWrite={false} />
+      </mesh>
+      <group ref={peelRef}>
+        <mesh position={[0, h / 4, 0]} receiveShadow castShadow>
+          <planeGeometry args={[width, h / 2]} />
+          <meshStandardMaterial map={map} transparent roughness={0.6} depthWrite={false} side={2} />
+        </mesh>
+      </group>
+    </group>
   );
 }

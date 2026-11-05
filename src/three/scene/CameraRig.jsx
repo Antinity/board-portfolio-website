@@ -3,17 +3,17 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { MathUtils, Plane, Raycaster, Vector3 } from "three";
-import { BOARD_H, BOARD_W, FRAME } from "../space";
+import { BOARD_H, BOARD_W, FRAME, OUTER_HALF_H, OUTER_HALF_W } from "../space";
 import { damp } from "../rig";
 
 const MIN_DIST = 2.6; // closest zoom
-const ZOOM_OUT_MARGIN = 1.12; // furthest zoom: whole board + frame, with a little wall around it
+const ZOOM_OUT_MARGIN = 1.06; // furthest zoom: everything on the wall, with a little wall around it
 const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
 
 /**
  * Perspective camera over the board.
- *  - rests on a view where the board fills the screen; you can zoom out
- *    further until the whole board (frame included) fits, with some wall
+ *  - opens on the subject, then settles fully zoomed out (the whole board,
+ *    frame and planks in view); zoom in from there
  *  - drag to pan, wheel / pinch to zoom toward the pointer
  *  - opens close on the subject, then pulls back
  *  - input is paused while a page is being read
@@ -36,14 +36,11 @@ export default function CameraRig({ rig }) {
     const halfH = BOARD_H / 2 + FRAME;
     return Math.min(halfW / (tanHalf() * camera.aspect), halfH / tanHalf());
   };
-  /** Distance at which the whole board (incl. frame) fits on screen. */
-  const containDist = () => {
-    const halfW = BOARD_W / 2 + FRAME;
-    const halfH = BOARD_H / 2 + FRAME;
-    return Math.max(halfW / (tanHalf() * camera.aspect), halfH / tanHalf());
-  };
+  /** Distance at which the whole board (frame and planks included) fits on screen. */
+  const containDist = () => Math.max(OUTER_HALF_W / (tanHalf() * camera.aspect), OUTER_HALF_H / tanHalf());
+  const farthest = () => containDist() * ZOOM_OUT_MARGIN;
   const clampView = (v) => {
-    v.d = MathUtils.clamp(v.d, MIN_DIST, containDist() * ZOOM_OUT_MARGIN);
+    v.d = MathUtils.clamp(v.d, MIN_DIST, farthest());
     const vis = visible(v.d);
     const mx = Math.max(BOARD_W / 2 + FRAME - vis.w / 2, 0);
     const my = Math.max(BOARD_H / 2 + FRAME - vis.h / 2, 0);
@@ -52,7 +49,8 @@ export default function CameraRig({ rig }) {
     return v;
   };
 
-  // Intro: open close on the subject, then pull back to reveal the board.
+  // Intro: open close on the subject, then pull all the way back so the
+  // whole board is in view (the furthest zoom).
   useEffect(() => {
     const v = view.current;
     const c = cur.current;
@@ -62,7 +60,7 @@ export default function CameraRig({ rig }) {
     const t = setTimeout(() => {
       v.x = 0;
       v.y = 0;
-      v.d = coverDist();
+      v.d = farthest();
       v.lambda = 1.3;
       clampView(v);
     }, 900);

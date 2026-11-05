@@ -8,6 +8,7 @@ const VARS = {
   marker: "--font-marker",
   hand: "--font-hand",
   display: "--font-display",
+  brand: "--font-brand",
 };
 
 let ready = null;
@@ -22,6 +23,7 @@ export function loadFonts() {
     Object.values(fonts).flatMap((family) => [
       document.fonts.load(`400 32px ${family}`),
       document.fonts.load(`700 32px ${family}`),
+      document.fonts.load(`800 32px ${family}`),
     ])
   )
     .catch(() => {})
