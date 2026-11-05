@@ -13,7 +13,7 @@
   --shadow: #00000066;
 
   /* faces (resolved from next/font in layout.js) */
-  --face-body: var(--font-type), ui-monospace, monospace;
+  --face-body: var(--font-type), cursive;
   --face-display: var(--font-display), system-ui, sans-serif;
 }
 

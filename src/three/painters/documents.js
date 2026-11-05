@@ -40,16 +40,6 @@ export const profile = {
     };
     section("Description", `${subject.bio[0]} ${subject.bio[1]}`, 9);
     section("Known habits", subject.bio[2], 5);
-
-    // investigator's note in red marker
-    ctx.fillStyle = INK.red;
-    ctx.font = font(fonts.marker, 21);
-    const quote = `“${subject.headline.join(" ")}”`;
-    const noteY = Math.min(y + 34, h - 46);
-    wrapText(ctx, quote, pad, noteY, inner - 40, 26, { maxLines: 2 });
-    ctx.strokeStyle = INK.red;
-    ctx.lineWidth = 2;
-    scribbleLine(ctx, pad, noteY + 34, pad + inner * 0.62, noteY + 31, r, 2.5);
   },
 };
 

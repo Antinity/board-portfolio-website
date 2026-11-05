@@ -13,8 +13,6 @@ export const subject = {
   activeSince: 2020,
   photo: "/evidence/avatar.jpg",
   role: "Full-stack developer & designer",
-  /** Lines from the prototype site's hero. */
-  headline: ["Don't you think", "I might be", "built different."],
   intro:
     "I'm a full-stack developer & designer. I collaborate with companies to craft memorable user experiences, bringing their vision with attention to small details.",
   bio: [

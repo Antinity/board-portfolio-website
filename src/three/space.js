@@ -7,8 +7,8 @@ export const BOARD_W = BOARD.width * UNIT;
 export const BOARD_H = BOARD.height * UNIT;
 export const FRAME = BOARD.frame * UNIT;
 
-/** Wooden planks screwed over the left and right edges of the frame. */
-export const PLANK = { width: 1.15, overlap: 0.4, overhang: 0.9, depth: 0.2 };
+/** Pale wooden posts either side of the board, joined by a beam on top. */
+export const PLANK = { width: 0.75, overlap: 0.12, overhang: 1.3, depth: 0.22 };
 
 /** Half-extents of everything mounted on the wall (board + frame + planks). */
 export const OUTER_HALF_W = BOARD_W / 2 + FRAME + PLANK.width - PLANK.overlap;

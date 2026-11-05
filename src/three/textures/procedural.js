@@ -143,57 +143,41 @@ export function torchCookie() {
   return t;
 }
 
-/** Deep navy with cloudy mottling, a faint sage grid and grain. */
-function navySurface(ctx, w, h, r) {
-  ctx.fillStyle = "#0f2340";
-  ctx.fillRect(0, 0, w, h);
-  for (let i = 0; i < 14; i++) {
-    const x = r() * w;
-    const y = r() * h;
-    const rad = (0.15 + r() * 0.35) * Math.max(w, h);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-    const light = r() < 0.55;
-    g.addColorStop(0, light ? `rgba(120,140,160,${0.08 + r() * 0.1})` : `rgba(4,10,24,${0.15 + r() * 0.2})`);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-  }
-  ctx.strokeStyle = "rgba(185,220,155,0.06)";
-  ctx.lineWidth = 1;
-  for (let x = 0; x < w; x += 22) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-  }
-  for (let y = 0; y < h; y += 22) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
-  for (let i = 0; i < (w * h) / 50; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${r() * 0.035})`;
-    ctx.fillRect(r() * w, r() * h, 1.2, 1.2);
-  }
-}
-
 /**
- * Frame stock in the prototype site's identity: deep navy with cloudy
- * mottling and a faint sage grid. Mapped across the whole frame face.
+ * Painted brick wall: staggered bricks with mortar lines, uneven tone and
+ * grime. Tiled across the wall behind the board.
  */
-export function navyFrameTexture() {
-  const W = 2048;
-  const H = 1280;
+export function brickTexture(repeat) {
+  const W = 1024;
+  const H = 1024;
   const cv = makeCanvas(W, H);
-  navySurface(cv.getContext("2d"), W, H, rng(31));
+  const c = cv.getContext("2d");
+  const r = rng(61);
+  const bw = 128;
+  const bh = 48;
+  c.fillStyle = "#3a3634";
+  c.fillRect(0, 0, W, H);
+  for (let row = 0; row * bh < H; row++) {
+    const off = row % 2 ? bw / 2 : 0;
+    for (let x = -bw; x < W + bw; x += bw) {
+      const v = 70 + r() * 30;
+      c.fillStyle = `rgb(${v + 8},${v - 6},${v - 12})`;
+      c.fillRect(x + off + 4, row * bh + 4, bw - 8, bh - 8);
+      for (let i = 0; i < 40; i++) {
+        c.fillStyle = `rgba(0,0,0,${r() * 0.15})`;
+        c.fillRect(x + off + 4 + r() * (bw - 10), row * bh + 4 + r() * (bh - 10), 2 + r() * 4, 2 + r() * 3);
+      }
+    }
+  }
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(...repeat);
   t.anisotropy = 16;
   return t;
 }
 
-/** Vertical wood grain for the side planks, with a couple of knots. */
+/** Pale, whitewashed wood grain for the posts and beam, with a couple of knots. */
 export function woodTexture() {
   const W = 256;
   const H = 2048;
@@ -201,14 +185,14 @@ export function woodTexture() {
   const c = cv.getContext("2d");
   const r = rng(41);
   const base = c.createLinearGradient(0, 0, W, 0);
-  base.addColorStop(0, "#4a2f1b");
-  base.addColorStop(0.5, "#6a4428");
-  base.addColorStop(1, "#4d311d");
+  base.addColorStop(0, "#d9cbb2");
+  base.addColorStop(0.5, "#e6dac4");
+  base.addColorStop(1, "#d6c7ad");
   c.fillStyle = base;
   c.fillRect(0, 0, W, H);
   for (let i = 0; i < 70; i++) {
     let x = r() * W;
-    c.strokeStyle = r() < 0.5 ? `rgba(30,16,6,${0.15 + r() * 0.25})` : `rgba(160,110,60,${0.08 + r() * 0.15})`;
+    c.strokeStyle = r() < 0.5 ? `rgba(120,95,60,${0.1 + r() * 0.18})` : `rgba(255,250,240,${0.08 + r() * 0.15})`;
     c.lineWidth = 0.6 + r() * 2.4;
     c.beginPath();
     c.moveTo(x, 0);
@@ -222,7 +206,7 @@ export function woodTexture() {
     const kx = W * (0.3 + r() * 0.4);
     const ky = H * (0.2 + r() * 0.6);
     for (let i = 0; i < 9; i++) {
-      c.strokeStyle = `rgba(35,18,8,${0.5 - i * 0.045})`;
+      c.strokeStyle = `rgba(110,80,45,${0.4 - i * 0.04})`;
       c.lineWidth = 1.6;
       c.beginPath();
       c.ellipse(kx, ky, 6 + i * 5, 14 + i * 13, 0, 0, Math.PI * 2);

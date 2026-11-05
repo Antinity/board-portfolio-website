@@ -42,7 +42,6 @@ const TRANSCRIPTS = {
         {subject.bio.map((p) => (
           <p key={p}>{p}</p>
         ))}
-        <p>{subject.headline.join(" ")}</p>
       </>
     ),
   }),

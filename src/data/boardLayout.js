@@ -18,7 +18,7 @@
 
 import { operations, socials, stack, witnesses, works } from "./content";
 
-export const BOARD = { width: 2800, height: 1440, frame: 70 };
+export const BOARD = { width: 2800, height: 1440, frame: 42 };
 
 export const SECTIONS = {
   subject: { title: "The subject" },

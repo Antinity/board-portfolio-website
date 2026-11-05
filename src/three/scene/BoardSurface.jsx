@@ -3,39 +3,44 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { BOARD_H, BOARD_W, FRAME, PLANK } from "../space";
-import { navyFrameTexture, whiteboardTextures, woodTexture } from "../textures/procedural";
+import { brickTexture, whiteboardTextures, woodTexture } from "../textures/procedural";
 
-const DEPTH = 0.12; // how far the frame stands proud of the cork
+const DEPTH = 0.1; // how far the frame stands proud of the board
 
-/** A screw: a shallow metal dome with a slot. */
-const screwHead = new THREE.CylinderGeometry(0.075, 0.085, 0.035, 18).rotateX(Math.PI / 2);
-const screwSlot = new THREE.BoxGeometry(0.11, 0.018, 0.02);
-const screwMat = new THREE.MeshStandardMaterial({ color: "#9a9a96", metalness: 0.85, roughness: 0.38 });
-const slotMat = new THREE.MeshStandardMaterial({ color: "#2a2a28", roughness: 0.8 });
+const aluminium = new THREE.MeshStandardMaterial({ color: "#b8bbbf", metalness: 0.8, roughness: 0.38 });
+const bracket = new THREE.MeshStandardMaterial({ color: "#151515", roughness: 0.6 });
+const screwMat = new THREE.MeshStandardMaterial({ color: "#8d8d88", metalness: 0.85, roughness: 0.4 });
+const screwHead = new THREE.CylinderGeometry(0.06, 0.068, 0.03, 16).rotateX(Math.PI / 2);
 
-function Screw({ position, turn }) {
+/** A black L-shaped corner bracket, rotated to its corner. */
+function LBracket({ x, y, sx, sy }) {
+  const arm = 0.42;
+  const t = 0.07;
   return (
-    <group position={position} rotation={[0, 0, turn]}>
-      <mesh geometry={screwHead} material={screwMat} castShadow />
-      <mesh geometry={screwSlot} material={slotMat} position={[0, 0, 0.012]} />
+    <group position={[x, y, DEPTH + 0.015]} scale={[sx, sy, 1]}>
+      <mesh material={bracket} position={[-arm / 2 + t, -t / 2, 0]} castShadow>
+        <boxGeometry args={[arm, t, 0.03]} />
+      </mesh>
+      <mesh material={bracket} position={[-t / 2, -arm / 2 + t, 0]} castShadow>
+        <boxGeometry args={[t, arm, 0.03]} />
+      </mesh>
     </group>
   );
 }
 
 /**
- * Whiteboard in a navy frame (the prototype site's cloud-and-grid stock with
- * a sage inner edge), held to the wall by two wooden planks screwed over its
- * left and right edges.
+ * Whiteboard in a plain aluminium frame with black L-brackets at the
+ * corners, standing between two pale wooden posts joined by a beam (the
+ * fluorescent tube lives on the beam), against a brick wall.
  */
 export default function BoardSurface() {
   const surface = useMemo(() => whiteboardTextures([BOARD_W / 1.5, BOARD_H / 1.5]), []);
-  const frameMap = useMemo(() => navyFrameTexture(), []);
   const wood = useMemo(() => woodTexture(), []);
+  const bricks = useMemo(() => brickTexture([9, 7]), []);
 
   const outerW = BOARD_W + FRAME * 2;
   const outerH = BOARD_H + FRAME * 2;
 
-  // frame: a rectangle with the cork opening cut out, extruded
   const frameGeometry = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-outerW / 2, -outerH / 2);
@@ -50,32 +55,37 @@ export default function BoardSurface() {
     hole.lineTo(BOARD_W / 2, -BOARD_H / 2);
     hole.closePath();
     shape.holes.push(hole);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2 });
-    // extrude UVs are raw x/y: normalise them across the frame face
-    const uv = geo.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / outerW + 0.5, uv.getY(i) / outerH + 0.5);
-    return geo;
+    return new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
   }, [outerW, outerH]);
 
-  const lip = 0.022; // sage inner edge
-  const lips = [
-    { pos: [0, BOARD_H / 2 - lip / 2, DEPTH * 0.5], size: [BOARD_W, lip, DEPTH] },
-    { pos: [0, -BOARD_H / 2 + lip / 2, DEPTH * 0.5], size: [BOARD_W, lip, DEPTH] },
-    { pos: [-BOARD_W / 2 + lip / 2, 0, DEPTH * 0.5], size: [lip, BOARD_H, DEPTH] },
-    { pos: [BOARD_W / 2 - lip / 2, 0, DEPTH * 0.5], size: [lip, BOARD_H, DEPTH] },
-  ];
-
-  const plankH = outerH + PLANK.overhang * 2;
-  const plankX = outerW / 2 + PLANK.width / 2 - PLANK.overlap;
-  const screwYs = [plankH / 2 - 0.45, plankH / 2 - PLANK.overhang - FRAME / 2, 0, -plankH / 2 + PLANK.overhang + FRAME / 2, -plankH / 2 + 0.45];
+  const postH = outerH + PLANK.overhang * 2;
+  const postX = outerW / 2 + PLANK.width / 2 - PLANK.overlap;
+  const beamY = outerH / 2 + PLANK.overhang - 0.35;
+  const cx = outerW / 2 - 0.02;
+  const cy = outerH / 2 - 0.02;
 
   return (
     <group>
-      {/* wall */}
-      <mesh position={[0, 0, -0.3]} receiveShadow>
+      {/* brick wall */}
+      <mesh position={[0, 0, -0.5]} receiveShadow>
         <planeGeometry args={[outerW * 3, outerH * 3]} />
-        <meshStandardMaterial color="#26231f" roughness={1} />
+        <meshStandardMaterial map={bricks} roughness={0.95} />
       </mesh>
+
+      {/* posts and the top beam, behind the board */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * postX, 0, -0.18]} castShadow receiveShadow>
+          <boxGeometry args={[PLANK.width, postH, PLANK.depth]} />
+          <meshStandardMaterial map={wood} roughness={0.85} />
+        </mesh>
+      ))}
+      <mesh position={[0, beamY, 0.06]} castShadow receiveShadow>
+        <boxGeometry args={[postX * 2 + PLANK.width, 0.5, PLANK.depth]} />
+        <meshStandardMaterial map={wood} roughness={0.85} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} geometry={screwHead} material={screwMat} position={[side * postX, beamY, 0.06 + PLANK.depth / 2 + 0.01]} />
+      ))}
 
       {/* whiteboard: satin, not glossy */}
       <mesh receiveShadow>
@@ -83,29 +93,12 @@ export default function BoardSurface() {
         <meshStandardMaterial map={surface.map} bumpMap={surface.bumpMap} bumpScale={0.25} roughness={0.62} />
       </mesh>
 
-      {/* navy frame */}
-      <mesh geometry={frameGeometry} castShadow receiveShadow>
-        <meshStandardMaterial map={frameMap} roughness={0.72} metalness={0.05} />
-      </mesh>
-      {lips.map((l, i) => (
-        <mesh key={i} position={l.pos} receiveShadow>
-          <boxGeometry args={l.size} />
-          <meshStandardMaterial color="#b9dc9b" roughness={0.55} />
-        </mesh>
-      ))}
-
-      {/* wooden planks holding it to the wall */}
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * plankX, 0, DEPTH + PLANK.depth / 2]}>
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[PLANK.width, plankH, PLANK.depth]} />
-            <meshStandardMaterial map={wood} roughness={0.78} />
-          </mesh>
-          {screwYs.map((y, i) => (
-            <Screw key={i} position={[0, y, PLANK.depth / 2 + 0.012]} turn={(side * 0.7 + i * 1.3) % Math.PI} />
-          ))}
-        </group>
-      ))}
+      {/* aluminium frame + black corner brackets */}
+      <mesh geometry={frameGeometry} material={aluminium} castShadow receiveShadow />
+      <LBracket x={-cx} y={cy} sx={-1} sy={1} />
+      <LBracket x={cx} y={cy} sx={1} sy={1} />
+      <LBracket x={-cx} y={-cy} sx={-1} sy={-1} />
+      <LBracket x={cx} y={-cy} sx={1} sy={-1} />
     </group>
   );
 }

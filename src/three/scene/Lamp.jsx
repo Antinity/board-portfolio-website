@@ -3,22 +3,22 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { BOARD_H, FRAME } from "../space";
+import { BOARD_H, FRAME, PLANK } from "../space";
 
-/** Tunables for the picture lamp on top of the frame. */
+/** Tunables for the fluorescent tube on the beam above the board. */
 const LAMP = {
-  color: "#ffd9a8", // warm tungsten
-  intensity: 0.9, // dim on purpose: the torch is the main light
-  width: 3.4, // shade length, world units
-  reach: 0.95, // how far the arm holds the shade off the board
+  color: "#e9f1ff", // cool fluorescent
+  intensity: 0.85, // dim on purpose: the torch is the main light
+  width: 7, // tube length, world units
+  reach: 0.45, // how far the tube sits in front of the beam
 };
 
-const brass = new THREE.MeshStandardMaterial({ color: "#3b3328", metalness: 0.7, roughness: 0.55 });
-const bulb = new THREE.MeshStandardMaterial({ color: "#000000", emissive: LAMP.color, emissiveIntensity: 1.4 });
+const fitting = new THREE.MeshStandardMaterial({ color: "#9aa4b4", metalness: 0.6, roughness: 0.45 });
+const bulb = new THREE.MeshStandardMaterial({ color: "#000000", emissive: LAMP.color, emissiveIntensity: 1.6 });
 
 /**
- * A gallery-style picture lamp clamped to the top of the frame, washing the
- * board with a dim, warm light from above. Its shadows are rendered while
+ * A fluorescent tube on the wooden beam above the board, washing it with a
+ * dim, cool light from above. Its shadows are rendered while
  * the board loads and while a page moves, then held, since nothing else
  * under it changes.
  */
@@ -27,7 +27,7 @@ export default function Lamp({ rig }) {
   const target = useMemo(() => new THREE.Object3D(), []);
   const wasMoving = useRef(false);
   const warmUntil = useRef(0);
-  const top = BOARD_H / 2 + FRAME;
+  const top = BOARD_H / 2 + FRAME + PLANK.overhang - 0.35; // the beam
 
   useEffect(() => {
     const l = light.current;
@@ -44,30 +44,23 @@ export default function Lamp({ rig }) {
 
   return (
     <group position={[0, top, 0]}>
-      {/* clamp + arm */}
-      <mesh material={brass} position={[0, 0.06, 0.12]}>
-        <boxGeometry args={[0.28, 0.12, 0.24]} />
-      </mesh>
-      <mesh material={brass} position={[0, 0.2, LAMP.reach / 2 + 0.1]} rotation={[Math.PI / 2 - 0.35, 0, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, LAMP.reach + 0.2, 10]} />
-      </mesh>
-      {/* shade with the bulb strip underneath */}
-      <group position={[0, 0.3, LAMP.reach]} rotation={[0.55, 0, 0]}>
-        <mesh material={brass} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.13, 0.13, LAMP.width, 24, 1, true, Math.PI * 0.5, Math.PI]} />
+      {/* end caps and the glowing tube */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} material={fitting} position={[side * (LAMP.width / 2 + 0.12), 0, LAMP.reach]}>
+          <boxGeometry args={[0.24, 0.22, 0.3]} />
         </mesh>
-        <mesh material={bulb} position={[0, -0.04, 0]}>
-          <boxGeometry args={[LAMP.width * 0.94, 0.02, 0.05]} />
-        </mesh>
-      </group>
-      <primitive object={target} position={[0, -BOARD_H * 0.42, 0]} />
+      ))}
+      <mesh material={bulb} position={[0, 0, LAMP.reach]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.07, 0.07, LAMP.width, 16]} />
+      </mesh>
+      <primitive object={target} position={[0, -BOARD_H * 0.5, 0]} />
       <spotLight
         ref={light}
-        position={[0, 0.2, LAMP.reach]}
+        position={[0, -0.05, LAMP.reach + 0.6]}
         color={LAMP.color}
         intensity={LAMP.intensity}
         decay={0}
-        angle={1.05}
+        angle={1.15}
         penumbra={1}
         castShadow
         shadow-mapSize={[1024, 1024]}
