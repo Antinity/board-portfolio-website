@@ -44,7 +44,7 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       shadows
       flat
       dpr={[1, quality === "high" ? 1.5 : 1.25]}
-      camera={{ fov: 32, near: 0.3, far: 120, position: [0, 0, 34] }}
+      camera={{ fov: 32, near: 0.3, far: 300, position: [0, 0, 34] }}
       gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
     >

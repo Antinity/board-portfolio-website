@@ -6,12 +6,14 @@ import { MathUtils, Plane, Raycaster, Vector3 } from "three";
 import { BOARD_H, BOARD_W, FRAME } from "../space";
 import { damp } from "../rig";
 
-const MIN_DIST = 2.6;
+const MIN_DIST = 2.6; // closest zoom
+const ZOOM_OUT_MARGIN = 1.12; // furthest zoom: whole board + frame, with a little wall around it
 const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
 
 /**
  * Perspective camera over the board.
- *  - zoomed out, the board always covers the whole screen
+ *  - rests on a view where the board fills the screen; you can zoom out
+ *    further until the whole board (frame included) fits, with some wall
  *  - drag to pan, wheel / pinch to zoom toward the pointer
  *  - opens close on the subject, then pulls back
  *  - input is paused while a page is being read
@@ -34,8 +36,14 @@ export default function CameraRig({ rig }) {
     const halfH = BOARD_H / 2 + FRAME;
     return Math.min(halfW / (tanHalf() * camera.aspect), halfH / tanHalf());
   };
+  /** Distance at which the whole board (incl. frame) fits on screen. */
+  const containDist = () => {
+    const halfW = BOARD_W / 2 + FRAME;
+    const halfH = BOARD_H / 2 + FRAME;
+    return Math.max(halfW / (tanHalf() * camera.aspect), halfH / tanHalf());
+  };
   const clampView = (v) => {
-    v.d = MathUtils.clamp(v.d, MIN_DIST, coverDist());
+    v.d = MathUtils.clamp(v.d, MIN_DIST, containDist() * ZOOM_OUT_MARGIN);
     const vis = visible(v.d);
     const mx = Math.max(BOARD_W / 2 + FRAME - vis.w / 2, 0);
     const my = Math.max(BOARD_H / 2 + FRAME - vis.h / 2, 0);
@@ -62,7 +70,7 @@ export default function CameraRig({ rig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
-  // Stay inside the board when the viewport changes.
+  // Stay within limits when the viewport changes.
   useEffect(() => {
     clampView(view.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read live camera values
