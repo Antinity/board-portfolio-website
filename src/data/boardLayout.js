@@ -7,7 +7,9 @@
  *  - LINKS:    red strings between two specific items
  *
  * Item `kind` picks a painter (src/three/painters) and a transcript
- * (src/reading/transcripts.jsx). `fasten`: "pin" (default) | "tape" | "pins" | "none".
+ * (src/reading/transcripts.jsx). `fasten`: "pin" (default) | "tape" | "pins" | "none";
+ * `pins` overrides where the magnets go (fractions of width / height).
+ * A job is a "case": an index card that opens like a book when picked up.
  * `ink`: written straight on the board (no paper, no fasteners).
  * `action`: what a click does — "read" (default: pick it up and read it),
  * "link" (open `props.social.url`), "copy" (copy the email address),
@@ -116,13 +118,15 @@ export const ITEMS = [
   ...works.map((work, i) => ({
     id: `job-${work.id}`,
     section: "jobs",
-    kind: "print",
+    kind: "case",
     x: spread(COL.c, 3, PRINT_W)[i % 3],
     y: 124 + Math.floor(i / 3) * PRINT_PITCH,
     w: PRINT_W,
     h: PRINT_H,
     rot: [0.6, -0.5, 0.4, -0.6, 0.5, -0.4, 0.6, -0.5, 0.4][i % 9],
     z: 1,
+    // the magnet keeps clear of the paper clip on the print
+    pins: work.image ? [[0.82, 0.05]] : [[0.5, 0.042]],
     props: { work },
   })),
 

@@ -5,18 +5,49 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { actionOf } from "@/data/boardLayout";
 import { contact } from "@/data/content";
-import { paintItem } from "../painters";
+import { paintItem, paintPages, pagesOf } from "../painters";
 import { seeded } from "../painters/common";
 import { smoothNoise } from "../painters/marker";
 import { paperBumpTexture } from "../textures/procedural";
 import { UNIT, itemZ, rectCenter } from "../space";
 import { damp } from "../rig";
 import { loading } from "../loading";
-import { Pin, Tape } from "./Fasteners";
+import { CLIP_TOP, Clip, Pin, Tape } from "./Fasteners";
 
 const READ_DIST = 1.6; // how far in front of the camera a page is held to read
 const PICK_UP_SECONDS = 1.15;
 const PUT_BACK_SECONDS = 1.6;
+
+// A card that opens like a book flies up first, then its cover swings open
+// (and closes before it flies back). Both run on one timeline, 0..1.
+const BOOK_PICK_UP_SECONDS = 2.0;
+const BOOK_PUT_BACK_SECONDS = 1.8;
+const BOOK_FLY = 0.6; // the flight takes this much of the timeline…
+const BOOK_OPEN = 0.55; // …and the cover starts to swing just before it ends
+const BOOK_SKEW = 0.011; // on the board, the leaf underneath sits a hair askew and peeks out
+const STOCK = "#f6f4ee";
+const BOOK_SPREAD = 0.978; // it opens not quite flat, so the spine reads as a fold
+const GUTTER = 0.13; // width of the soft shadow either side of the spine (world units)
+
+/** The shade in the fold of an open book: dark at the spine, gone a little way in. */
+let gutterMap = null;
+function gutterTexture() {
+  if (gutterMap) return gutterMap;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 2;
+  const ctx = c.getContext("2d");
+  const g = ctx.createLinearGradient(0, 0, 128, 0);
+  g.addColorStop(0, "rgba(40,30,18,0.28)");
+  g.addColorStop(0.35, "rgba(40,30,18,0.09)");
+  g.addColorStop(1, "rgba(40,30,18,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 2);
+  gutterMap = new THREE.CanvasTexture(c);
+  gutterMap.colorSpace = THREE.SRGBColorSpace;
+  return gutterMap;
+}
+const gutterGeometry = new THREE.PlaneGeometry(1, 1);
 const CIRCLE_IN_SECONDS = 0.62; // the red marker loop is drawn on slowly enough to watch…
 const CIRCLE_OUT_SECONDS = 0.34; // …and wipes away when the pointer leaves
 const READ_TILT = { x: 0.06, y: 0.08 }; // slight tilt toward the pointer while reading (radians)
@@ -44,6 +75,25 @@ function curledPlane(item) {
   }
   geo.computeVertexNormals();
   return geo;
+}
+
+/**
+ * The leaves of a card that opens like a book: a flat sheet, plus copies
+ * for the inside of the cover with the texture mirrored, so it reads the
+ * right way round once the cover has swung over sideways (`u`) or up (`v`).
+ */
+function bookLeaves(item) {
+  const sheet = new THREE.PlaneGeometry(item.w * UNIT, item.h * UNIT, 4, 4);
+  const mirror = (axis) => {
+    const g = sheet.clone();
+    const uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) {
+      if (axis === "u") uv.setX(i, 1 - uv.getX(i));
+      else uv.setY(i, 1 - uv.getY(i));
+    }
+    return g;
+  };
+  return { sheet, insideSide: mirror("u"), insideTop: mirror("v") };
 }
 
 /**
@@ -175,7 +225,85 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const tapePeel = useRef(null);
   const material = useRef(null);
   const loopMesh = useRef(null);
-  const state = useRef({ t: 0, hovered: false, circle: 0, tiltX: 0, tiltY: 0, yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 });
+  const state = useRef({ t: 0, hovered: false, circle: 0, tiltX: 0, tiltY: 0, yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0, hinge: "side" });
+
+  // ---- a card that opens like a book ----
+  const book = Boolean(pagesOf(item));
+  const leaves = useMemo(() => (book ? bookLeaves(item) : null), [book, item]);
+  const spread = useRef(null); // moves so the open spread stays centred
+  const under = useRef(null); // the leaf under the cover
+  const hinge = useRef(null);
+  const cover = useRef(null);
+  const insideSide = useRef(null);
+  const insideTop = useRef(null);
+  const gutterUnder = useRef(null);
+  const gutterCover = useRef(null);
+  const [inside, setInside] = useState(null); // { left, right } textures, painted only while open
+  const insideNow = useRef(null);
+  const pageMats = useMemo(() => {
+    if (!book) return null;
+    const page = (side) =>
+      new THREE.MeshStandardMaterial({ color: STOCK, roughness: 0.96, bumpMap: bump, bumpScale: 0.9, side, emissive: "#000000", emissiveIntensity: 0 });
+    return { left: page(THREE.BackSide), right: page(THREE.FrontSide) };
+  }, [book, bump]);
+
+  useEffect(() => () => leaves && Object.values(leaves).forEach((g) => g.dispose()), [leaves]);
+  useEffect(() => () => pageMats && Object.values(pageMats).forEach((m) => m.dispose()), [pageMats]);
+  const gutter = useMemo(
+    () => (book ? new THREE.MeshBasicMaterial({ map: gutterTexture(), transparent: true, depthWrite: false, opacity: 0, side: THREE.DoubleSide }) : null),
+    [book]
+  );
+  useEffect(() => () => gutter?.dispose(), [gutter]);
+
+  // the inside pages are painted when the card is picked up, and let go a while after it is put back
+  useEffect(() => {
+    if (!book) return;
+    const release = () => {
+      const res = insideNow.current;
+      insideNow.current = null;
+      setInside(null);
+      res?.left.texture.dispose();
+      res?.right.texture.dispose();
+    };
+    if (!selected) {
+      const t = setTimeout(release, BOOK_PUT_BACK_SECONDS * 1000 + 300);
+      return () => clearTimeout(t);
+    }
+    if (insideNow.current) return;
+    let alive = true;
+    paintPages(item).then((res) => {
+      if (!alive) {
+        res.left.texture.dispose();
+        res.right.texture.dispose();
+        return;
+      }
+      insideNow.current = res;
+      setInside(res);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [book, item, selected]);
+  useEffect(
+    () => () => {
+      insideNow.current?.left.texture.dispose();
+      insideNow.current?.right.texture.dispose();
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!pageMats) return;
+    for (const side of ["left", "right"]) {
+      const m = pageMats[side];
+      const tex = inside?.[side].texture ?? null;
+      m.map = tex;
+      m.emissiveMap = tex;
+      m.color.set(tex ? "#ffffff" : STOCK);
+      m.emissive.set(tex ? "#ffffff" : "#000000");
+      m.needsUpdate = true;
+    }
+  }, [pageMats, inside]);
 
   useEffect(() => {
     let alive = true;
@@ -212,8 +340,9 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
     // red marker loop: drawn quickly on hover, wiped from its start on leave
     if (loop) {
-      if (loopMesh.current) loopMesh.current.visible = !rig.reading; // never over a held page
-      const want = (s.hovered || rig.focus === item.id) && !rig.reading;
+      const onBoard = s.t === 0; // not while it is held, or flying back to its place
+      if (loopMesh.current) loopMesh.current.visible = !rig.reading && onBoard;
+      const want = (s.hovered || rig.focus === item.id) && !rig.reading && onBoard;
       s.circle = clamp01(s.circle + (want ? dt / CIRCLE_IN_SECONDS : -dt / CIRCLE_OUT_SECONDS));
       const n = loop.index.count;
       const p = easeOutQuad(s.circle);
@@ -229,15 +358,52 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     // back plays it in reverse, a little slower.
     const target = selected ? 1 : 0;
     if (s.t === target && !selected) return;
-    const rate = dt / (selected ? PICK_UP_SECONDS : PUT_BACK_SECONDS);
+    const rate = dt / (book ? (selected ? BOOK_PICK_UP_SECONDS : BOOK_PUT_BACK_SECONDS) : selected ? PICK_UP_SECONDS : PUT_BACK_SECONDS);
     s.t = selected ? Math.min(1, s.t + rate) : Math.max(0, s.t - rate);
-    const release = easeInOutCubic(clamp01(s.t / 0.24));
-    const e = easeInOutCubic(clamp01((s.t - 0.16) / 0.84));
+    if (book && selected && !insideNow.current) s.t = Math.min(s.t, BOOK_OPEN); // hold it shut until the inside is painted
+    const fly = book ? clamp01(s.t / BOOK_FLY) : s.t;
+    const release = easeInOutCubic(clamp01(fly / 0.24));
+    const e = easeInOutCubic(clamp01((fly - 0.16) / 0.84));
+    const open = book ? easeInOutCubic(clamp01((s.t - BOOK_OPEN) / (1 - BOOK_OPEN))) : 0;
 
     const fov = THREE.MathUtils.degToRad(camera.fov);
     const visH = 2 * READ_DIST * Math.tan(fov / 2);
     const visW = visH * camera.aspect;
-    const scale = Math.min((readLayout.height * visH) / (item.h * UNIT), (readLayout.width * visW) / (item.w * UNIT));
+    const fitScale = (w, h) => Math.min((readLayout.height * visH) / (h * UNIT), (readLayout.width * visW) / (w * UNIT));
+    // while it is shut, pick the way to open it that shows the pages largest:
+    // sideways like a book on a wide screen, upward like a notepad on a tall one
+    if (book && open === 0) s.hinge = fitScale(item.w * 2, item.h) >= fitScale(item.w, item.h * 2) ? "side" : "top";
+    const sideways = s.hinge === "side";
+    const spanW = item.w * (book && sideways ? 1 + open : 1);
+    const spanH = item.h * (book && !sideways ? 1 + open : 1);
+    const scale = fitScale(spanW, spanH);
+
+    if (book && spread.current) {
+      const W = item.w * UNIT;
+      const H = item.h * UNIT;
+      spread.current.position.set(sideways ? (W / 2) * open : 0, sideways ? 0 : (-H / 2) * open, 0);
+      hinge.current.position.set(sideways ? -W / 2 : 0, sideways ? 0 : H / 2, 0.0025);
+      const swing = -Math.PI * BOOK_SPREAD * open;
+      hinge.current.rotation.set(sideways ? 0 : swing, sideways ? swing : 0, 0);
+      // the shade in the fold, along whichever edge is the spine (the same edge on both leaves)
+      for (const [m, z] of [
+        [gutterUnder.current, 0.0006],
+        [gutterCover.current, -0.0006],
+      ]) {
+        m.scale.set(GUTTER, sideways ? H : W, 1);
+        m.rotation.set(0, 0, sideways ? 0 : -Math.PI / 2);
+        m.position.set(sideways ? (GUTTER - W) / 2 : 0, sideways ? 0 : (H - GUTTER) / 2, z);
+      }
+      gutter.opacity = open;
+      cover.current.position.set(sideways ? W / 2 : 0, sideways ? 0 : -H / 2, 0);
+      insideSide.current.visible = sideways;
+      insideTop.current.visible = !sideways;
+      under.current.rotation.z = BOOK_SKEW * (1 - e);
+      if (pageMats) {
+        pageMats.left.emissiveIntensity = e * 0.5;
+        pageMats.right.emissiveIntensity = e * 0.5;
+      }
+    }
     camera.getWorldDirection(tmp.fwd);
     tmp.right.set(1, 0, 0).applyQuaternion(camera.quaternion);
     tmp.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
@@ -251,7 +417,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     s.zoom += ((selected ? rig.readZoom : 1) - s.zoom) * kz;
     s.panX += ((selected ? rig.readPan.x : 0) - s.panX) * kz;
     s.panY += ((selected ? rig.readPan.y : 0) - s.panY) * kz;
-    if (selected) rig.readHalf.set((item.w * UNIT * scale) / visW, (item.h * UNIT * scale) / visH);
+    if (selected) rig.readHalf.set((spanW * UNIT * scale) / visW, (spanH * UNIT * scale) / visH);
     tmp.off
       .copy(tmp.right)
       .multiplyScalar((s.panX * visW) / 2)
@@ -293,12 +459,13 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
 
   const ink = Boolean(item.ink); // written on the board in marker: no paper, no fasteners
   const fasten = item.fasten ?? "pin";
-  const pins = (FASTENERS[fasten] ?? []).filter(
+  const pins = (item.pins ?? FASTENERS[fasten] ?? []).filter(
     (at) => !occupied.some((o) => Math.abs(o[0] - at[0]) * item.w < 40 && Math.abs(o[1] - at[1]) * item.h < 40)
   );
   const r = seeded(`${item.id}-pins`);
 
-  const handlers =
+  /** Pointer handlers for one face; `links` are the link regions painted on it. */
+  const handlersFor = (links) =>
     action === "none"
       ? {}
       : {
@@ -314,19 +481,19 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           onPointerMove: (e) => {
             if (!selected) return;
             e.stopPropagation();
-            document.body.style.cursor = linkAt(item, painted.links, e.uv) ? "pointer" : "";
+            document.body.style.cursor = linkAt(item, links, e.uv) ? "pointer" : "";
           },
           onClick: (e) => {
             e.stopPropagation();
             if (selected) {
               if (rig.dragging || performance.now() < rig.suppressClickUntil) return;
-              const link = linkAt(item, painted.links, e.uv);
+              const link = linkAt(item, links, e.uv);
               if (link) openLink(link.href);
               return;
             }
             if (rig.dragging || rig.reading || performance.now() < rig.suppressClickUntil) return;
             if (action === "ink") {
-              const link = linkAt(item, painted.links, e.uv);
+              const link = linkAt(item, links, e.uv);
               if (link) openLink(link.href);
               return;
             }
@@ -337,32 +504,66 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           },
         };
 
+  const W = item.w * UNIT;
+  const H = item.h * UNIT;
+  const blankBack = <meshStandardMaterial color="#e3e0d8" bumpMap={bump} bumpScale={0.9} roughness={0.97} side={THREE.BackSide} />;
+  const front = (
+    <meshStandardMaterial
+      ref={material}
+      map={painted.texture}
+      emissiveMap={painted.texture}
+      emissive="#ffffff"
+      emissiveIntensity={0}
+      bumpMap={ink ? null : bump}
+      bumpScale={0.9}
+      roughness={ink ? 0.48 : 0.96}
+      transparent={ink}
+      depthWrite={!ink}
+      polygonOffset={ink}
+      polygonOffsetFactor={-1}
+      polygonOffsetUnits={-1}
+      alphaTest={painted.alpha && !ink ? 0.5 : 0}
+      side={painted.alpha && !ink ? THREE.DoubleSide : THREE.FrontSide}
+    />
+  );
+
   return (
     <group ref={group} position={board.pos} quaternion={board.quat}>
-      <mesh geometry={geometry} castShadow={!ink} receiveShadow={!ink} renderOrder={ink ? 2 : 0} {...handlers}>
-        <meshStandardMaterial
-          ref={material}
-          map={painted.texture}
-          emissiveMap={painted.texture}
-          emissive="#ffffff"
-          emissiveIntensity={0}
-          bumpMap={ink ? null : bump}
-          bumpScale={0.9}
-          roughness={ink ? 0.48 : 0.96}
-          transparent={ink}
-          depthWrite={!ink}
-          polygonOffset={ink}
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
-          alphaTest={painted.alpha && !ink ? 0.5 : 0}
-          side={painted.alpha && !ink ? THREE.DoubleSide : THREE.FrontSide}
-        />
-      </mesh>
-      {/* the blank back of the sheet, seen when a held page is spun round */}
-      {!painted.alpha && (
-        <mesh geometry={geometry} receiveShadow>
-          <meshStandardMaterial color="#e3e0d8" bumpMap={bump} bumpScale={0.9} roughness={0.97} side={THREE.BackSide} />
-        </mesh>
+      {book ? (
+        <group ref={spread}>
+          {/* the leaf underneath: the write-up on its face, blank behind */}
+          <group ref={under} rotation={[0, 0, BOOK_SKEW]}>
+            <mesh geometry={leaves.sheet} material={pageMats.right} receiveShadow {...handlersFor(inside?.right.links)} />
+            <mesh ref={gutterUnder} geometry={gutterGeometry} material={gutter} />
+            <mesh geometry={leaves.sheet} receiveShadow>
+              {blankBack}
+            </mesh>
+          </group>
+          {/* the cover, on a hinge along its left edge (or its top edge, opened like a notepad) */}
+          <group ref={hinge} position={[-W / 2, 0, 0.0025]}>
+            <group ref={cover} position={[W / 2, 0, 0]}>
+              <mesh geometry={leaves.sheet} castShadow receiveShadow {...handlersFor(painted.links)}>
+                {front}
+              </mesh>
+              <mesh ref={insideSide} geometry={leaves.insideSide} material={pageMats.left} receiveShadow {...handlersFor(inside?.left.links)} />
+              <mesh ref={insideTop} geometry={leaves.insideTop} material={pageMats.left} receiveShadow visible={false} {...handlersFor(inside?.left.links)} />
+              <mesh ref={gutterCover} geometry={gutterGeometry} material={gutter} />
+              {item.props.work?.image && <Clip position={[-W * 0.27, H / 2 + 0.17 - CLIP_TOP, 0.001]} rot={0.07} />}
+            </group>
+          </group>
+        </group>
+      ) : (
+        <>
+          <mesh geometry={geometry} castShadow={!ink} receiveShadow={!ink} renderOrder={ink ? 2 : 0} {...handlersFor(painted.links)}>
+            {front}
+          </mesh>
+          {/* the blank back of the sheet, seen when a held page is spun round */}
+          {!painted.alpha && (
+            <mesh geometry={geometry} receiveShadow>
+              {blankBack}
+            </mesh>
+          )}
+        </>
       )}
       {loop && <mesh ref={loopMesh} geometry={loop} material={markerInk} renderOrder={10} />}
       <group ref={fasteners}>

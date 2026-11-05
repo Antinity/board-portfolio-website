@@ -122,6 +122,28 @@ export const works = [
   },
 ];
 
+/**
+ * DUMMY write-up printed inside every job's card until real ones are written.
+ * To fill one in, give that work its own `file` with any of these keys
+ * (`story`, `tools`, `timeline`); whatever it leaves out stays dummy.
+ */
+export const dummyFile = {
+  story: [
+    "This is where the story goes: who the project was for, what they needed, and what stood in the way when it started.",
+    "Then how it was designed and built, the one or two decisions that mattered most, and how it went once it was live.",
+  ],
+  tools: ["Figma", "Next.js", "React", "Tailwind", "Vercel", "Git"],
+  timeline: [
+    ["Brief", "Week 1"],
+    ["Design", "Week 2"],
+    ["Build", "Weeks 3–4"],
+    ["Launch", "Week 5"],
+  ],
+};
+
+/** The full write-up for a work: its own `file`, with the dummy filling any gaps. */
+export const caseFileFor = (work) => ({ ...dummyFile, ...work.file });
+
 /** The to-do list: shipped (done) and currently building (open). */
 export const operations = [
   {

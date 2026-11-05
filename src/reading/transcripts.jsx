@@ -1,4 +1,4 @@
-import { subject } from "@/data/content";
+import { caseFileFor, subject } from "@/data/content";
 
 /*
  * Transcripts: the text of each kind of evidence, given to screen readers
@@ -58,22 +58,43 @@ const TRANSCRIPTS = {
     body: <p>{item.props.text.replace(/\n/g, " ")}</p>,
   }),
 
-  print: ({ props: { work } }) => ({
-    title: work.title,
-    body: (
-      <>
-        <p>
-          {work.location} · {work.services} · {work.year}
-        </p>
-        {work.summary && <p>{work.summary}</p>}
-        {work.url && (
+  case: ({ props: { work } }) => {
+    const file = caseFileFor(work);
+    return {
+      title: work.title,
+      body: (
+        <>
           <p>
-            <Link href={work.url}>{bare(work.url)}</Link>
+            {work.services}, {work.location}, {work.year}
           </p>
-        )}
-      </>
-    ),
-  }),
+          {work.url && (
+            <p>
+              <Link href={work.url}>{bare(work.url)}</Link>
+            </p>
+          )}
+          <h3>The story</h3>
+          {work.summary && <p>{work.summary}</p>}
+          {file.story.map((p) => (
+            <p key={p}>{p}</p>
+          ))}
+          <h3>Tools</h3>
+          <ul>
+            {file.tools.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+          <h3>Timeline</h3>
+          <ol>
+            {file.timeline.map(([stage, when]) => (
+              <li key={stage}>
+                {stage}: {when}
+              </li>
+            ))}
+          </ol>
+        </>
+      ),
+    };
+  },
 
   todo: ({ props: { items } }) => ({
     title: "To do",

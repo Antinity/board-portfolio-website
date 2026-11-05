@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { makeCanvas, rng } from "../textures/procedural";
 
-/* Magnets and masking tape. Geometry/materials are shared across instances. */
+/* Magnets, masking tape and paper clips. Geometry/materials are shared across instances. */
 
 const PIN_COLORS = ["#c3242c", "#2557c4", "#2c9a4a", "#e0b52a", "#e8e5dc", "#1d1d1f"];
 
@@ -77,4 +77,45 @@ export function Tape({ position, rot = 0, width = 1, peelRef }) {
       </group>
     </group>
   );
+}
+
+/**
+ * A steel paper clip, bent from one wire: an inner loop and an outer loop.
+ * Laid out in board pixels (y up, centred), then scaled to world units.
+ */
+const clipGeometry = (() => {
+  const px = 0.01; // world units per board pixel
+  const pts = [];
+  const zIn = 0.9; // the inner loop sits on the paper, the outer one a hair higher
+  const zOut = 1.6;
+  const line = (x0, y0, x1, y1, z0, z1) => {
+    const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0)));
+    for (let i = 0; i < n; i++) pts.push([x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n, z0 + ((z1 - z0) * i) / n]);
+  };
+  const arc = (cx, cy, rad, a0, a1, z0, z1) => {
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + ((a1 - a0) * i) / n;
+      pts.push([cx + rad * Math.cos(a), cy + rad * Math.sin(a), z0 + ((z1 - z0) * i) / n]);
+    }
+  };
+  line(-3.1, -7, -3.1, 16.8, zIn, zIn);
+  arc(0, 16.8, 3.1, Math.PI, 0, zIn, zIn);
+  line(3.1, 16.8, 3.1, -22.4, zIn, zIn);
+  arc(-1.9, -22.4, 5, 0, -Math.PI, zIn, zOut);
+  line(-6.9, -22.4, -6.9, 25.2, zOut, zOut);
+  arc(0.4, 25.2, 7.3, Math.PI, 0, zOut, zOut);
+  line(7.7, 25.2, 7.7, -14, zOut, zOut);
+  pts.push([7.7, -14, zOut]);
+  const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x * px, y * px, z * px)));
+  return new THREE.TubeGeometry(curve, 360, 0.95 * px, 8, false);
+})();
+/** How far the clip reaches above its centre (world units): for setting it over an edge. */
+export const CLIP_TOP = 0.334;
+
+const clipMaterial = new THREE.MeshStandardMaterial({ color: "#c6cacf", metalness: 0.78, roughness: 0.3 });
+
+/** A paper clip at `position`, turned `rot` (radians) on the paper. */
+export function Clip({ position, rot = 0 }) {
+  return <mesh geometry={clipGeometry} material={clipMaterial} position={position} rotation={[0, 0, rot]} castShadow />;
 }
