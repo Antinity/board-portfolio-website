@@ -25,6 +25,12 @@ export function createRig(home = new Vector3()) {
     input: "mouse",
     /** a finger is currently down on the board */
     touching: false,
+    /**
+     * Where on the screen the torch is held on a touch screen (NDC): just above
+     * the middle until the visitor taps somewhere, then wherever they tapped.
+     * Drags, swipes and pinches never move it, so it stays clear of the thumb.
+     */
+    held: new Vector2(0, 0.08),
     /** clicks are ignored until this time (ms): the tail of a drag, pinch or glide-stop */
     suppressClickUntil: 0,
     /** the next click belongs to a drag, pinch or glide-stop that just ended: swallow it */

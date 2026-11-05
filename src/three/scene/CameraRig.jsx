@@ -11,7 +11,6 @@ const MIN_DIST = 2.6; // closest zoom
 const ZOOM_OUT_MARGIN = 1.06; // furthest zoom: everything on the wall, with a little wall around it
 const BOARD_PLANE = new Plane(new Vector3(0, 0, 1), 0);
 
-const REST = new Vector2(0, 0.08); // where the torch is held on a touch screen (NDC)
 const TORCH_MAX = 12.2; // widest torch cone (desktop)
 const GLIDE_DECAY = 2.2; // per second: how quickly a flick slows down
 const GLIDE_MAX = 60; // world units / second
@@ -258,6 +257,11 @@ export default function CameraRig({ rig }) {
 
       g.down = false;
       rig.touching = false;
+      if (tracked && e.pointerType === "touch" && !g.moved && !g.pinched && !g.caught) {
+        // a tap: the torch is moved to where the finger landed, and is held there
+        const [nx, ny] = toNdc(e);
+        rig.held.set(MathUtils.clamp(nx, -0.92, 0.92), MathUtils.clamp(ny, -0.92, 0.92));
+      }
       if (tracked && e.pointerType === "touch" && g.moved && !g.pinched) {
         // flick: finger speed over the last ~100 ms becomes momentum
         const recent = g.samples.filter((s) => e.timeStamp - s.t < 100);
@@ -357,12 +361,13 @@ export default function CameraRig({ rig }) {
     rig.zoomBlur = ((prev.d - c.d) / c.d) * (fps / 60);
     rig.speed = Math.hypot(c.x - prev.x, c.y - prev.y, (c.d - prev.d) * 0.5) / Math.max(rawDt, 1 / 240);
 
-    // where on the board is the torch held? On a phone it rests ahead of you
-    // unless a finger is down; with a mouse it is the pointer.
-    const resting = rig.input === "touch" && !rig.touching;
-    if (!resting && !rig.pointerActive) rig.cursor.copy(rig.home);
+    // where on the board is the torch held? On a phone it stays at its spot on
+    // the screen (moved only by a tap) while the board slides under it; with a
+    // mouse it is the pointer.
+    const touch = rig.input === "touch";
+    if (!touch && !rig.pointerActive) rig.cursor.copy(rig.home);
     else {
-      ray.current.setFromCamera(resting ? REST : rig.pointer, camera);
+      ray.current.setFromCamera(touch ? rig.held : rig.pointer, camera);
       if (ray.current.ray.intersectPlane(BOARD_PLANE, hit.current)) rig.cursor.copy(hit.current);
     }
   });
