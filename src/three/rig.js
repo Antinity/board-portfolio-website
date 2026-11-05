@@ -41,6 +41,8 @@ export function createRig(home = new Vector3()) {
     speed: 0,
     /** cone radius of the torch on the board, world units (sized to the screen) */
     torchRadius: 12.2,
+    /** soft baked shadows under the paper, standing in for ambient occlusion when that pass is off */
+    contactShadows: false,
     /** the board fills the screen and is panned sideways (phones) */
     fill: false,
     /** id of the item being read, or null */

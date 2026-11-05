@@ -262,9 +262,10 @@ export function whiteboardTextures(bumpRepeat) {
     c.fillStyle = g;
     c.fillRect(x - 220, y - 220, 440, 440);
   }
-  // specks
+  // specks (a few shared colour strings: setting a new one for every dot is what makes this slow)
+  const specks = Array.from({ length: 8 }, (_, i) => `rgba(60,60,60,${((i / 7) * 0.12).toFixed(3)})`);
   for (let i = 0; i < 2600; i++) {
-    c.fillStyle = `rgba(60,60,60,${r() * 0.12})`;
+    c.fillStyle = specks[(r() * 8) | 0];
     c.fillRect(r() * W, r() * H, 1 + r(), 1 + r());
   }
   // grain: fine light and dark speckle over the whole surface, then coarser mottling
@@ -277,8 +278,9 @@ export function whiteboardTextures(bumpRepeat) {
     px[i + 2] += n;
   }
   c.putImageData(grain, 0, 0);
+  const mottle = ["70,70,66", "255,255,255"].map((rgb) => Array.from({ length: 8 }, (_, i) => `rgba(${rgb},${(0.05 + (i / 7) * 0.1).toFixed(3)})`));
   for (let i = 0; i < 9000; i++) {
-    c.fillStyle = `rgba(${r() < 0.5 ? "70,70,66" : "255,255,255"},${0.05 + r() * 0.1})`;
+    c.fillStyle = mottle[r() < 0.5 ? 0 : 1][(r() * 8) | 0];
     const sz = 1.5 + r() * 3.5;
     c.fillRect(r() * W, r() * H, sz, sz);
   }
@@ -296,14 +298,25 @@ export function whiteboardTextures(bumpRepeat) {
   const B = 512;
   const bcv = makeCanvas(B, B);
   const b = bcv.getContext("2d");
-  b.fillStyle = "#808080";
-  b.fillRect(0, 0, B, B);
+  // dabs of grey on mid grey, written straight into the pixels (60,000 fillRects were slow)
+  const bump = b.createImageData(B, B);
+  const d = bump.data;
+  const grey = new Float32Array(B * B).fill(128);
   for (let i = 0; i < 60000; i++) {
     const v = 70 + r() * 120;
-    b.fillStyle = `rgba(${v},${v},${v},0.55)`;
-    const sz = 1 + r() * 2;
-    b.fillRect(r() * B, r() * B, sz, sz);
+    const sz = Math.max(1, Math.round(1 + r() * 2));
+    const x0 = (r() * B) | 0;
+    const y0 = (r() * B) | 0;
+    for (let y = y0; y < y0 + sz; y++) for (let x = x0; x < x0 + sz; x++) {
+      const k = (y % B) * B + (x % B);
+      grey[k] = grey[k] * 0.45 + v * 0.55;
+    }
   }
+  for (let k = 0; k < B * B; k++) {
+    d[k * 4] = d[k * 4 + 1] = d[k * 4 + 2] = grey[k];
+    d[k * 4 + 3] = 255;
+  }
+  b.putImageData(bump, 0, 0);
   const bumpMap = new THREE.CanvasTexture(bcv);
   bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
   bumpMap.repeat.set(...bumpRepeat);

@@ -17,8 +17,15 @@ export default function LoadingGate({ steps }) {
     const unsubscribe = loading.subscribe(({ done, total }) => {
       if (finished || done < total) return;
       finished = true;
-      requestAnimationFrame(() => {
-        gl.compile(scene, camera);
+      // compileAsync lets the driver build shaders in parallel without freezing the page
+      // (KHR_parallel_shader_compile); older three falls back to a blocking compile
+      requestAnimationFrame(async () => {
+        try {
+          if (gl.compileAsync) await gl.compileAsync(scene, camera);
+          else gl.compile(scene, camera);
+        } catch {
+          /* a failed warm-up only means a hitch later, never a stuck loader */
+        }
         requestAnimationFrame(() => loading.finish());
       });
     });

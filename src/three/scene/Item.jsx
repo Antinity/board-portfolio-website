@@ -99,6 +99,53 @@ function bookLeaves(item) {
 }
 
 /**
+ * A soft shadow hugging the edges of a sheet lying on the board: rings
+ * around its outline whose darkness fades to nothing a short way out. Baked
+ * as geometry, it stands in for the ambient occlusion pass on cheaper
+ * quality settings (see quality.js) at almost no cost.
+ */
+const CONTACT_RINGS = [
+  [0, 1],
+  [0.035, 0.42],
+  [0.15, 0],
+]; // [distance out from the edge (world units), darkness]
+const CONTACT_DROP = 0.025; // the light is above: the shadow sits a little low
+
+function contactShadow(item) {
+  const w = (item.w * UNIT) / 2;
+  const h = (item.h * UNIT) / 2;
+  const position = [];
+  const color = [];
+  for (const [out, a] of CONTACT_RINGS) {
+    const y = -CONTACT_DROP * (out / CONTACT_RINGS[CONTACT_RINGS.length - 1][0]);
+    for (const [sx, sy] of [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ]) {
+      position.push(sx * (w + out), sy * (h + out) + y, 0);
+      color.push(0, 0, 0, a);
+    }
+  }
+  const index = [];
+  for (let ring = 0; ring < CONTACT_RINGS.length - 1; ring++) {
+    const i = ring * 4;
+    const o = i + 4;
+    for (let c = 0; c < 4; c++) {
+      const n = (c + 1) % 4;
+      index.push(i + c, o + c, o + n, i + c, o + n, i + n);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(color, 4));
+  geo.setIndex(index);
+  return geo;
+}
+const CONTACT_STRENGTH = 0.3;
+
+/**
  * A loose, overshooting red marker loop drawn around an item, in its local
  * space: a flat ribbon lying on the board (not a wire) that swells and thins
  * with the pressure of the pen, thinner where it starts and lifts off.
@@ -221,6 +268,21 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
   const action = actionOf(item);
   const loop = useMemo(() => (action === "none" || action === "ink" ? null : markerLoop(item)), [item, action]);
   const bump = useMemo(() => paperBumpTexture(), []);
+  const contactRef = useRef(null);
+  const contact = useMemo(() => {
+    if (item.ink) return null;
+    return {
+      geometry: contactShadow(item),
+      material: new THREE.MeshBasicMaterial({ color: "#ffffff", vertexColors: true, transparent: true, opacity: CONTACT_STRENGTH, depthWrite: false }),
+    };
+  }, [item]);
+  useEffect(
+    () => () => {
+      contact?.geometry.dispose();
+      contact?.material.dispose();
+    },
+    [contact]
+  );
   const group = useRef(null);
   const fasteners = useRef(null);
   const pinsRef = useRef(null);
@@ -372,6 +434,13 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
     // Taking a page off the board is one timeline: pins pull out and the tape
     // peels up, then the page lifts and turns to face the viewer. Putting it
     // back plays it in reverse, a little slower.
+    // the baked contact shadow only shows while the sheet lies on the board (and fades as it lifts)
+    if (contactRef.current) {
+      const lift = clamp01(s.t / 0.12);
+      contactRef.current.visible = rig.contactShadows && lift < 1;
+      contact.material.opacity = CONTACT_STRENGTH * (1 - lift);
+    }
+
     const target = selected ? 1 : 0;
     if (s.t === target && !selected) return;
     const rate = dt / (book ? (selected ? BOOK_PICK_UP_SECONDS : BOOK_PUT_BACK_SECONDS) : selected ? PICK_UP_SECONDS : PUT_BACK_SECONDS);
@@ -583,6 +652,7 @@ export default function Item({ item, occupied = [], rig, selected, onRead, readL
           )}
         </>
       )}
+      {contact && <mesh ref={contactRef} geometry={contact.geometry} material={contact.material} position={[0, 0, 0.0015 - itemZ(item)]} renderOrder={1} />}
       {loop && <mesh ref={loopMesh} geometry={loop} material={markerInk} renderOrder={10} />}
       <group ref={fasteners}>
         <group ref={pinsRef}>

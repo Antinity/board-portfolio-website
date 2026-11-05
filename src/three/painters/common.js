@@ -1,4 +1,4 @@
-import { rng } from "../textures/procedural";
+import { makeCanvas, rng } from "../textures/procedural";
 
 /* Shared drawing helpers for painters. All sizes are in board pixels. */
 
@@ -64,15 +64,44 @@ export function wrapLines(ctx, text, maxW) {
   return lines;
 }
 
+/*
+ * Paper fibre: a tile of fine light and dark speckle, drawn once and laid
+ * over every sheet as a pattern (each sheet from its own offset), instead of
+ * thousands of separate dots per sheet. Drawn at FIBRE_DENSITY texture
+ * pixels per board pixel so the specks stay crisp on the painted sheets.
+ */
+const FIBRE_TILE = 256; // board px
+const FIBRE_DENSITY = 3;
+let fibre = null;
+function fibreTile() {
+  if (fibre) return fibre;
+  fibre = makeCanvas(FIBRE_TILE * FIBRE_DENSITY, FIBRE_TILE * FIBRE_DENSITY);
+  const c = fibre.getContext("2d");
+  c.scale(FIBRE_DENSITY, FIBRE_DENSITY);
+  const r = rng(77);
+  const shades = (rgb) => Array.from({ length: 8 }, (_, i) => `rgba(${rgb},${(0.03 + (i / 7) * 0.05).toFixed(3)})`);
+  const dark = shades("60,45,20");
+  const light = shades("255,255,255");
+  for (let i = 0; i < (FIBRE_TILE * FIBRE_TILE) / 60; i++) {
+    c.fillStyle = (r() < 0.5 ? dark : light)[(r() * 8) | 0];
+    const s = 1 + r() * 1.5;
+    // wrap specks over the tile's edges so the pattern has no seams
+    const x = r() * FIBRE_TILE;
+    const y = r() * FIBRE_TILE;
+    for (const dx of [0, -FIBRE_TILE]) for (const dy of [0, -FIBRE_TILE]) c.fillRect(x + dx, y + dy, s, s);
+  }
+  return fibre;
+}
+
 /** Off-white sheet with fibre speckle, darkened edges and the odd stain. */
 export function paperBase(ctx, w, h, { color = "#f2ede1", r = Math.random, stains = 0, shade = 0.12 } = {}) {
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, w, h);
 
-  for (let i = 0; i < (w * h) / 60; i++) {
-    ctx.fillStyle = `rgba(${r() < 0.5 ? "60,45,20" : "255,255,255"},${0.03 + r() * 0.05})`;
-    ctx.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5);
-  }
+  const speckle = ctx.createPattern(fibreTile(), "repeat");
+  speckle.setTransform(new DOMMatrix([1 / FIBRE_DENSITY, 0, 0, 1 / FIBRE_DENSITY, -r() * FIBRE_TILE, -r() * FIBRE_TILE]));
+  ctx.fillStyle = speckle;
+  ctx.fillRect(0, 0, w, h);
 
   const edge = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
   edge.addColorStop(0, "rgba(120,90,40,0)");

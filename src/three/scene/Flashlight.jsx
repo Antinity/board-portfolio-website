@@ -63,6 +63,16 @@ export default function Flashlight({ rig, on = true, quality = "high" }) {
     };
   }, [cookie, target]);
 
+  // a different shadow map size only takes once the old map is let go
+  const mapSize = quality === "high" || quality === "medium" ? 2048 : 1024;
+  useEffect(() => {
+    const l = light.current;
+    if (!l) return;
+    l.shadow.mapSize.set(mapSize, mapSize);
+    l.shadow.map?.dispose();
+    l.shadow.map = null;
+  }, [mapSize]);
+
   useFrame(({ clock }, rawDt) => {
     const l = light.current;
     if (!l) return;
@@ -130,7 +140,7 @@ export default function Flashlight({ rig, on = true, quality = "high" }) {
         decay={0}
         penumbra={0.04}
         castShadow
-        shadow-mapSize={quality === "low" ? [1024, 1024] : [2048, 2048]}
+        shadow-mapSize={[mapSize, mapSize]}
         shadow-bias={-0.0003}
         shadow-normalBias={0.02}
       />

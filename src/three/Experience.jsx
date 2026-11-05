@@ -18,7 +18,9 @@ import Lamp from "./scene/Lamp";
 import ReadingSpin from "./scene/ReadingSpin";
 import LoadingGate from "./scene/LoadingGate";
 import TorchFocus from "./scene/TorchFocus";
-import AdaptiveResolution from "./scene/AdaptiveResolution";
+import QualityGovernor from "./scene/QualityGovernor";
+import QualitySettings from "./scene/QualitySettings";
+import { startingQuality } from "./quality";
 import ClickGuard from "./scene/ClickGuard";
 
 /**
@@ -38,20 +40,19 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
   const occupied = useMemo(() => stringPinsByItem(), []);
 
   // Client-only component (loaded with ssr: false), so window is available here.
-  // Override with ?fx=high | low | off.
-  const [{ quality, coarse }] = useState(() => {
-    const touch = window.matchMedia("(pointer: coarse)").matches;
-    const forced = new URLSearchParams(window.location.search).get("fx");
-    if (["high", "low", "off"].includes(forced)) return { quality: forced, coarse: touch };
-    // phones and tablets always get the lighter chain, whatever their size
-    return { quality: touch || window.innerWidth < 700 || navigator.hardwareConcurrency <= 4 ? "low" : "high", coarse: touch };
-  });
+  // Quality starts where the GPU should cope and steps down if it can't
+  // (quality.js, QualityGovernor). Pin it with ?fx=high | medium | low | off.
+  const [start] = useState(startingQuality);
+  const [level, setLevel] = useState(start.level);
+  const rung = start.ladder[level];
+  const quality = rung.fx;
+  const dpr = Math.min(window.devicePixelRatio || 1, rung.dpr);
 
   return (
     <Canvas
       shadows
-      flat
-      dpr={coarse ? [1, 2] : [1, quality === "high" ? 1.5 : 1.25]}
+      flat={quality !== "off"}
+      dpr={dpr}
       camera={{ fov: 32, near: 0.3, far: 300, position: [0, 0, 34] }}
       gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "fixed", inset: 0, touchAction: "none", background: "#050505" }}
@@ -81,8 +82,10 @@ export default function Experience({ readingId, onRead, onClose, torchOn, readLa
       <TorchFocus rig={rig} />
       <ClickGuard rig={rig} />
       <CameraRig rig={rig} />
-      {coarse && <AdaptiveResolution />}
+      {!start.pinned && <QualityGovernor level={level} last={start.ladder.length - 1} onStep={setLevel} />}
+      <QualitySettings rig={rig} quality={quality} />
       {quality !== "off" && <PostFX rig={rig} quality={quality} />}
     </Canvas>
   );
 }
+
