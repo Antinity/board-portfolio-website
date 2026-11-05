@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { READABLE, SECTIONS } from "@/data/boardLayout";
 import { contact, socials, subject } from "@/data/content";
 import { transcriptFor } from "@/reading/transcripts";
@@ -31,6 +31,7 @@ export default function InvestigationBoard() {
   const [torchOn, setTorchOn] = useState(true);
   const [readLayout, setReadLayout] = useState(() => readLayoutFor(1280));
 
+  const holdsEntry = useRef(false); // a history entry was added for the held page
   const index = READABLE.findIndex((i) => i.id === readingId);
   const reading = READABLE[index] ?? null;
 
@@ -51,6 +52,41 @@ export default function InvestigationBoard() {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // The held page gets its own history entry, so a phone's back swipe or
+  // button puts the page back instead of leaving the site.
+  const isReading = readingId !== null;
+  useEffect(() => {
+    if (!isReading) return;
+    window.history.pushState({ reading: true }, "");
+    holdsEntry.current = true;
+    const onPop = () => {
+      holdsEntry.current = false;
+      setReadingId(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (holdsEntry.current) {
+        holdsEntry.current = false;
+        window.history.back(); // put back by tap or Esc: drop the entry we added
+      }
+    };
+  }, [isReading]);
+
+  // No page zoom (iOS pinch) and no long-press menu over the board.
+  useEffect(() => {
+    const stop = (e) => e.preventDefault();
+    const onMenu = (e) => {
+      if (e.target instanceof HTMLCanvasElement) e.preventDefault();
+    };
+    document.addEventListener("gesturestart", stop, { passive: false });
+    document.addEventListener("contextmenu", onMenu);
+    return () => {
+      document.removeEventListener("gesturestart", stop);
+      document.removeEventListener("contextmenu", onMenu);
+    };
   }, []);
 
   useEffect(() => {

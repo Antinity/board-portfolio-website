@@ -6,7 +6,9 @@
   display: grid;
   grid-template-rows: 1fr auto auto;
   align-content: end;
-  padding: clamp(24px, 5vw, 64px);
+  --pad: clamp(24px, 5vw, 64px);
+  padding: calc(var(--pad) + env(safe-area-inset-top)) calc(var(--pad) + env(safe-area-inset-right))
+    calc(var(--pad) + env(safe-area-inset-bottom)) calc(var(--pad) + env(safe-area-inset-left));
   background: var(--room);
   color: var(--paper);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);

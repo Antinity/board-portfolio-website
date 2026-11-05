@@ -30,6 +30,8 @@ body {
   font-family: var(--face-display);
   -webkit-font-smoothing: antialiased;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
 

@@ -15,6 +15,7 @@ export const metadata = {
 
 export const viewport = {
   themeColor: "#050505",
+  viewportFit: "cover", // run under the notch; the loader and toast keep clear of it
 };
 
 export default function RootLayout({ children }) {
